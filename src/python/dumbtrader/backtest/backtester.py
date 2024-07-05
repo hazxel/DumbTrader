@@ -19,21 +19,6 @@ def gen_csv_tuple(file_list):
         for tuple in df.itertuples(index=False):
             yield tuple
 
-def feed_csv(strategy, file_list):
-    pnl = []
-    for tuple in gen_csv_tuple(file_list):
-        strategy.feed_tuple(tuple)
-        pnl.append(strategy.calc_pnl())
-    return pnl
-
-class runner:
-    def __init__(self, strategy, backtester):
-        self.strategy = strategy
-        self.backtester = backtester
-    
-    def run():
-        pass
-
 MKT_FEE = 0.00041
 LMT_FEE = 0.00026
 

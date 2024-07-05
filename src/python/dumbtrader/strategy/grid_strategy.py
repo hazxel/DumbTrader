@@ -5,11 +5,7 @@ import bisect
 from .strategy_constants import *
 from .strategy import *
 
-def validate_grid_num():
-    if (up_limit - down_limit) / grid_num < (up_limit + down_limit) / 10000:
-        raise Exception("grid too small")
-
-class grid_strategy:
+class GridStrategy(Strategy):
     def __init__(self, inst_id, low_lmt, high_lmt, grid_num, weight):
         self.inst_id = inst_id
         self.grid_num = grid_num
@@ -76,7 +72,7 @@ class grid_strategy:
     def on_px_change(self, px_tuple):
         return []
 
-class ema_grid_strategy(grid_strategy):
+class EmaGridStrategy(GridStrategy):
     def __init__(self, inst_id, low_lmt, high_lmt, grid_num, weight, N=5000000):
         super().__init__(inst_id, low_lmt, high_lmt, grid_num, weight)
         self.ema = None
@@ -115,7 +111,8 @@ class ema_grid_strategy(grid_strategy):
         px = self.id2px.pop(internal_ord_id)
         self.px2id.pop(px)
         return []
-        
+    
+    # on fake order filled, grid is shifted
     def check_dummy_order(self, px):
         signals = []
         while self.delta > 0 and px > self.grid[self.latest_trade_idx + 1]:
@@ -174,7 +171,4 @@ class ema_grid_strategy(grid_strategy):
                     # print(f"put back sell {px}, delta: {new_delta}")
         self.delta = new_delta
         return signals
-    
-    def get_ema(self):
-        return self.ema
 

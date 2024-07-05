@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from abc import ABC, abstractmethod
 
 class Signal(Enum):
     SUBMIT = auto()
@@ -53,3 +54,18 @@ class LmtBuyOrder(Order):
     def __init__(self, inst_id, volume, px, internal_id):
         super().__init__(OrderDirection.BUY, OrderType.LIMIT, inst_id, volume, px, internal_id)
 
+class Strategy(ABC):
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def on_start(self, px_tuple):
+        return []
+    
+    @abstractmethod
+    def on_order_filled(self, internal_ord_id):
+        return []
+    
+    @abstractmethod
+    def on_px_change(self, px_tuple):
+        return []

@@ -6,7 +6,7 @@ if __name__ == '__main__':
     data_files = find_files_with_prefix("../../../data/", "ETH-USDT-SWAP-trades-all-17")
     print(data_files)
     for grid_num in range(2,30):
-        grid_stra = grid_strategy("ETH-USDT", 3207.31, 3689.72, grid_num, 0.03)
+        grid_stra = GridStrategy("ETH-USDT", 3207.31, 3689.72, grid_num, 0.03)
         bt = backetester(grid_stra, data_files)
         pxs, pnls = bt.run()
         print(f"{grid_num} grids, trades: {bt.trades}, pnl: {pnls[-1]:.2f}, margin: {grid_stra.total_margin():.2f}, profit rate: {pnls[-1]/grid_stra.total_margin()*100:.2f}%")
