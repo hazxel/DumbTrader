@@ -2,15 +2,15 @@ import asyncio
 import os
 import uuid
 
-from okx.okxapiws import *
-from okx.okxconstants import *
+from okxws.client import *
+from okxws.constants import *
 
 async def test_subscribe_trades():
     async with websockets.connect(WS_URI.PUBLIC_GENERAL) as ws:
-        channel = OkxWsChannel(ws)
-        response = await channel.subscribe(WS_SUBSCRIBE_CHANNEL.TRADES, "ETH-USDT-SWAP")
+        client = OkxWsClient(ws)
+        response = await client.subscribe(WS_SUBSCRIBE_CHANNEL.TRADES, "ETH-USDT-SWAP")
         print(f"subscribe success, connection id: {response}")
-        response = await channel.recv_data()
+        response = await client.recv_data()
         print(f"received data: {response}")
 
 async def test_login_and_order():
@@ -24,13 +24,13 @@ async def test_login_and_order():
         passphrase = config.get('passphrase')
 
     async with websockets.connect(WS_URI.PRIVATE_PAPER) as ws:
-        channel = OkxWsPrivateChannel(ws)
+        client = OkxPrivateWsClient(ws)
 
-        response = await channel.login(api_key, passphrase, secret_key)
+        response = await client.login(api_key, passphrase, secret_key)
         print(f"login success, connection id: {response}")
 
         internal_order_id = str(uuid.uuid4()).replace('-', '')
-        await channel.submit_order(
+        await client.submit_order(
             client_order_id=internal_order_id, 
             inst_id="ETH-USDT-SWAP",
             td_mode=TD_MODE.ISOLATED,
@@ -41,7 +41,7 @@ async def test_login_and_order():
             px=2200)
         print(f"submit buy order {internal_order_id} success")
 
-        await channel.cancel_order(
+        await client.cancel_order(
             client_order_id=internal_order_id, 
             inst_id="ETH-USDT-SWAP")
         print(f"cancel order {internal_order_id} success")

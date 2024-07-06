@@ -6,9 +6,9 @@ import time
 import uuid
 import websockets
 
-from .okxconstants import *
+from .constants import *
 
-class OkxWsChannel:
+class OkxWsClient:
     def __init__(self, websocket):
         self.websocket = websocket
         self.conn_id = None
@@ -52,7 +52,7 @@ class OkxWsChannel:
             raise Exception(f"subscribe failed, response: {response}")
         return data["connId"]
 
-class OkxWsPrivateChannel(OkxWsChannel):
+class OkxPrivateWsClient(OkxWsClient):
     async def login(self, api_key, passphrase, secret_key):
         login_msg = build_login_msg(api_key, passphrase, secret_key)
         await self.websocket.send(login_msg)
