@@ -3,18 +3,17 @@ import os
 import uuid
 
 from okx.okxapiws import *
+from okx.okxconstants import *
 
-async def test_subscribe():
-    uri = "wss://ws.okx.com:8443/ws/v5/business"
-    async with websockets.connect(uri) as ws:
+async def test_subscribe_trades():
+    async with websockets.connect(WS_URI.PUBLIC_GENERAL) as ws:
         channel = OkxWsChannel(ws)
-        response = await channel.subscribe("trades-all", "ETH-USDT-SWAP")
+        response = await channel.subscribe(WS_SUBSCRIBE_CHANNEL.TRADES, "ETH-USDT-SWAP")
         print(f"subscribe success, connection id: {response}")
         response = await channel.recv_data()
         print(f"received data: {response}")
 
 async def test_login_and_order():
-    demo_trading_private_uri = "wss://wspap.okx.com:8443/ws/v5/private?brokerId=9999"
     script_dir = os.path.dirname(os.path.abspath(__file__))
     credential_path = os.path.join(script_dir, '../../../../credentials/okx-paper-key.json')
 
@@ -24,7 +23,7 @@ async def test_login_and_order():
         secret_key = config.get('secret_key')
         passphrase = config.get('passphrase')
 
-    async with websockets.connect(demo_trading_private_uri) as ws:
+    async with websockets.connect(WS_URI.PRIVATE_PAPER) as ws:
         channel = OkxWsPrivateChannel(ws)
 
         response = await channel.login(api_key, passphrase, secret_key)
@@ -34,10 +33,10 @@ async def test_login_and_order():
         await channel.submit_order(
             client_order_id=internal_order_id, 
             inst_id="ETH-USDT-SWAP",
-            td_mode="isolated",
-            side="buy",
-            pos_side="long",
-            order_type="limit",
+            td_mode=TD_MODE.ISOLATED,
+            side=SIDE.BUY,
+            pos_side=POS_SIDE.LONG,
+            order_type=ORD_TYPE.LMT,
             sz=0.1,
             px=2200)
         print(f"submit buy order {internal_order_id} success")
@@ -49,5 +48,5 @@ async def test_login_and_order():
         
         
 if __name__ == '__main__':
-    asyncio.run(test_subscribe())
+    asyncio.run(test_subscribe_trades())
     asyncio.run(test_login_and_order())
