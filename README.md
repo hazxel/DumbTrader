@@ -1,2 +1,2 @@
 # DumbTrader
-As you see, a dumb trading bot
+As you can see, a dumb trading bot
