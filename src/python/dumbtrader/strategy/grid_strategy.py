@@ -2,8 +2,7 @@
 import uuid
 import bisect
 
-from .strategy_constants import *
-from .strategy import *
+from dumbtrader.strategy.strategy import *
 
 class GridStrategy(Strategy):
     def __init__(self, inst_id, low_lmt, high_lmt, grid_num, weight):

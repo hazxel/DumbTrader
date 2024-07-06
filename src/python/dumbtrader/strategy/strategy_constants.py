@@ -1,1 +1,0 @@
-trading_fee_rate = 0.0002

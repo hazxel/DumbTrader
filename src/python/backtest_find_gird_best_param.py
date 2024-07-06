@@ -1,9 +1,11 @@
+import sys
+
 from dumbtrader.backtest.backtester import *
 from dumbtrader.strategy.grid_strategy import *
-from dumbtrader.strategy.strategy import *
 
 if __name__ == '__main__':
-    data_files = find_files_with_prefix("../../../data/", "ETH-USDT-SWAP-trades-all-17")
+    data_files = find_files_with_prefix(sys.argv[1], "ETH-USDT-SWAP-trades-all-17")
+    print(f"processing {len(data_files)} files")
     print(data_files)
     for grid_num in range(2,30):
         grid_stra = GridStrategy("ETH-USDT", 3207.31, 3689.72, grid_num, 0.03)

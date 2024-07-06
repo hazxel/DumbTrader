@@ -1,10 +1,11 @@
 import asyncio
 import csv
+import sys
 import time
 import websockets
 
-from okxws.client import *
-from okxws.constants import *
+from dumbtrader.api.okxws.client import *
+from dumbtrader.api.okxws.constants import *
 
 # one websocker connection for one instrument
 async def ws_channel_dump_csv(inst_id, new_file_period_s, dump_path, col_filter=[]):
@@ -46,5 +47,4 @@ async def ws_channel_dump_tradeall_csv(inst_id_list, dump_path="."):
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    # asyncio.run(ws_channel_dump_tradeall_csv(sys.argv[1:]))
-    asyncio.run(ws_channel_dump_tradeall_csv(["BTC-USDT-SWAP","ETH-USDT-SWAP"]))
+    asyncio.run(ws_channel_dump_tradeall_csv(["BTC-USDT-SWAP","ETH-USDT-SWAP"], sys.argv[1]))

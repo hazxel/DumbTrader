@@ -6,7 +6,7 @@ import time
 import uuid
 import websockets
 
-from .constants import *
+from dumbtrader.api.okxws.constants import *
 
 class OkxWsClient:
     def __init__(self, websocket):

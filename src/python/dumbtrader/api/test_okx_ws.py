@@ -2,8 +2,8 @@ import asyncio
 import os
 import uuid
 
-from okxws.client import *
-from okxws.constants import *
+from dumbtrader.api.okxws.client import *
+from dumbtrader.api.okxws.constants import *
 
 async def test_subscribe_trades():
     async with websockets.connect(WS_URI.PUBLIC_GENERAL) as ws:

@@ -1,6 +1,8 @@
+import matplotlib.pyplot as plt
+import sys
+
 from dumbtrader.backtest.backtester import *
 from dumbtrader.strategy.grid_strategy import *
-import matplotlib.pyplot as plt
 
 def make_ema_generator(init_px, N=5000000):
     prev_px = init_px
@@ -16,7 +18,7 @@ def make_ema_generator(init_px, N=5000000):
     
 
 if __name__ == '__main__':
-    data_files = find_files_with_prefix("../../../data/", "ETH-USDT-SWAP-trades-all-17")
+    data_files = find_files_with_prefix(sys.argv[1], "ETH-USDT-SWAP-trades-all-17")
     N = 5000000
     grid_stra = EmaGridStrategy("ETH-USDT", 3207.31, 3689.72, 17, 0.03, N)
     # grid_stra = GridStrategy("ETH-USDT", 3207.31, 3689.72, 17, 0.03)
