@@ -11,13 +11,13 @@ from dumbtrader.api.okxws.constants import *
 async def ws_channel_dump_csv(inst_id, new_file_period_s, dump_path, col_filter=[]):
     while True:
         try:
-            async with websockets.connect(WS_URI.PUBLIC_BUSINESS) as ws:
+            async with websockets.connect(OKX_WS_URI.PUBLIC_BUSINESS) as ws:
                 client = OkxWsClient(ws)
-                response = await client.subscribe(WS_SUBSCRIBE_CHANNEL.TRADES_ALL, inst_id)
+                response = await client.subscribe(OKX_WS_SUBSCRIBE_CHANNEL.TRADES_ALL, inst_id)
                 print((f"subscribe success, connection id: {response}"))
                 while True:
                     period_ts_prefix = int(time.time()) // new_file_period_s
-                    filename = f"{dump_path}/{inst_id}-{WS_SUBSCRIBE_CHANNEL.TRADES_ALL}-{period_ts_prefix}.csv"
+                    filename = f"{dump_path}/{inst_id}-{OKX_WS_SUBSCRIBE_CHANNEL.TRADES_ALL}-{period_ts_prefix}.csv"
                     with open(filename, 'a', newline='') as file:
                         # recv first response to get field names
                         row = await client.recv_data(col_filter)

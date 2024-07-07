@@ -25,7 +25,7 @@ class backetester:
         self.trades += 1
         traded_amount = 0
         # print(f"px: {order.px} bbo: {heapq.nsmallest(1,self.limit_buy_orders)[0].px} bao: {heapq.nsmallest(1,self.limit_sell_orders)[0].px}")
-        # print(f"cur pnl: {self.calc_pnl()}, cur px {self.last_pxs['ETH-USDT']}, order px: {order.px}, {order.direction} {order.volume}")
+        # print(f"cur pnl: {self.calc_pnl()}, cur px {self.last_pxs['ETH-USDT']}, order px: {order.px}, {order.side} {order.volume}")
         if order.type == OrderType.MARKET:
             # todo: last px not usually available 
             traded_amount = order.volume * self.last_pxs[order.inst_id]
@@ -36,18 +36,18 @@ class backetester:
         else:
             raise Exception(f"Unsupported order type: {order.type}")
 
-        if order.direction == OrderDirection.BUY:
+        if order.side == OrderSide.BUY:
             self.balance -= traded_amount
             self.positions[order.inst_id] += order.volume
             # print(f"buy at {order.px}, position {self.positions[order.inst_id]}")
             return self.strategy.on_order_filled(order.internal_id)
-        elif order.direction == OrderDirection.SELL:
+        elif order.side == OrderSide.SELL:
             self.balance += traded_amount
             self.positions[order.inst_id] -= order.volume
             # print(f"sell at {order.px}, position {self.positions[order.inst_id]}")
             return self.strategy.on_order_filled(order.internal_id)
         else:
-            raise Exception(f"Unsupported order direction: {order.direction}")
+            raise Exception(f"Unsupported order side: {order.side}")
         
         
     # signals: [(sig, order1), ...]
@@ -55,11 +55,11 @@ class backetester:
         for sig, order in signals:
             if sig == Signal.SUBMIT:
                 if order.type == OrderType.LIMIT \
-                    and order.direction == OrderDirection.BUY \
+                    and order.side == OrderSide.BUY \
                     and order.px < self.last_pxs[order.inst_id]:
                         heapq.heappush(self.limit_buy_orders, order)
                 elif order.type == OrderType.LIMIT \
-                    and order.direction == OrderDirection.SELL \
+                    and order.side == OrderSide.SELL \
                     and order.px > self.last_pxs[order.inst_id]:
                         heapq.heappush(self.limit_sell_orders, order)
                 else:
@@ -73,37 +73,37 @@ class backetester:
 
     def run(self):
         # init strategy
-        tuple = next(gen_csv_tuple(self.file_list))
-        signals = self.strategy.on_start(tuple)
-        self.last_pxs["ETH-USDT"] = tuple.px
+        record = next(gen_csv_record(self.file_list))
+        signals = self.strategy.on_start(record)
+        self.last_pxs["ETH-USDT"] = record['px']
         self.handle_signals(signals)
 
         pxs = []
         pnls = []
 
         # begin iteration
-        for tuple in gen_csv_tuple(self.file_list):
-            signals.extend(self.strategy.on_px_change(tuple))
-            while self.limit_buy_orders and self.limit_buy_orders[0].px > tuple.px:
+        for record in gen_csv_record(self.file_list):
+            signals.extend(self.strategy.on_px_change(record))
+            while self.limit_buy_orders and self.limit_buy_orders[0].px > record['px']:
                 order = heapq.heappop(self.limit_buy_orders)
                 if order.internal_id in self.cancelled_orders:
                     self.cancelled_orders.remove(order.internal_id)
                     continue
                 signals.extend(self.execute_order(order))
 
-            while self.limit_sell_orders and self.limit_sell_orders[0].px < tuple.px:
+            while self.limit_sell_orders and self.limit_sell_orders[0].px < record['px']:
                 order = heapq.heappop(self.limit_sell_orders)
                 if order.internal_id in self.cancelled_orders:
                     self.cancelled_orders.remove(order.internal_id)
                     continue
                 signals.extend(self.execute_order(order))
 
-            self.last_pxs["ETH-USDT"] = tuple.px
+            self.last_pxs["ETH-USDT"] = record['px']
                
             # signals.append(strategy.onOrderBookChange(tuple))
 
             self.handle_signals(signals)
-            pxs.append(tuple.px)
+            pxs.append(record['px'])
             pnls.append(self.calc_pnl())
         return (pxs, pnls)
 

@@ -1,14 +1,15 @@
 import asyncio
 import os
 import uuid
+import websockets
 
 from dumbtrader.api.okxws.client import *
 from dumbtrader.api.okxws.constants import *
 
 async def test_subscribe_trades():
-    async with websockets.connect(WS_URI.PUBLIC_GENERAL) as ws:
+    async with websockets.connect(OKX_WS_URI.PUBLIC_GENERAL) as ws:
         client = OkxWsClient(ws)
-        response = await client.subscribe(WS_SUBSCRIBE_CHANNEL.TRADES, "ETH-USDT-SWAP")
+        response = await client.subscribe(OKX_WS_SUBSCRIBE_CHANNEL.TRADES, "ETH-USDT-SWAP")
         print(f"subscribe success, connection id: {response}")
         response = await client.recv_data()
         print(f"received data: {response}")
@@ -23,8 +24,8 @@ async def test_login_and_order():
         secret_key = config.get('secret_key')
         passphrase = config.get('passphrase')
 
-    async with websockets.connect(WS_URI.PRIVATE_PAPER) as ws:
-        client = OkxPrivateWsClient(ws)
+    async with websockets.connect(OKX_WS_URI.PRIVATE_PAPER) as ws:
+        client = OkxWsPlaceOrderClient(ws)
 
         response = await client.login(api_key, passphrase, secret_key)
         print(f"login success, connection id: {response}")
@@ -33,10 +34,10 @@ async def test_login_and_order():
         await client.submit_order(
             client_order_id=internal_order_id, 
             inst_id="ETH-USDT-SWAP",
-            td_mode=TD_MODE.ISOLATED,
-            side=SIDE.BUY,
-            pos_side=POS_SIDE.LONG,
-            order_type=ORD_TYPE.LMT,
+            td_mode=OKX_TD_MODE.ISOLATED,
+            side=OKX_SIDE.BUY,
+            pos_side=OKX_POS_SIDE.LONG,
+            order_type=OKX_ORD_TYPE.LMT,
             sz=0.1,
             px=2200)
         print(f"submit buy order {internal_order_id} success")
