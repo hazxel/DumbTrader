@@ -37,17 +37,16 @@ class GridStrategy(Strategy):
         return (Signal.SUBMIT, LmtBuyOrder(self.inst_id, self.weight, px, id))
     
     # helper functions
-    def closest_grid_idx(self, px):
-        return round((px - self.grid[0]) / self.grid_interval)
+    def to_grid_idx(self, px):
+        idx = round((px - self.grid[0]) / self.grid_interval)
+        return max(0, min(len(self.grid)-1, idx))
     
-    def closest_grid_px(self, px):
-        idx = max(0, self.closest_grid_idx(px))
-        idx = min(len(self.grid)-1, idx)
-        return self.grid[idx]
+    def to_grid_px(self, px):
+        return self.grid[self.to_grid_idx(px)]
 
     def on_start(self, record):
         cur_px = record['px']
-        self.latest_trade_idx = self.closest_grid_idx(cur_px)
+        self.latest_trade_idx = self.to_grid_idx(cur_px)
         self.latest_trade_px = self.grid[self.latest_trade_idx]
         self.piviot_px = self.latest_trade_px
         signals = []
@@ -136,7 +135,7 @@ class EmaGridStrategy(GridStrategy):
             else:
                 signals.append(self.gen_lmt_sell_signal(new_up_px))
             self.latest_trade_px = self.grid[self.latest_trade_idx]
-            self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)+1]
+            self.piviot_px = self.grid[self.to_grid_idx(self.piviot_px)+1]
             # print(f"fake order at {self.grid[self.latest_trade_idx + 1]} triggered, grid shifted up: [{self.grid[0]},{self.grid[-1]}]")
         while self.delta < 0 and px < self.grid[self.latest_trade_idx - 1]:
             # shift grid down
@@ -151,7 +150,7 @@ class EmaGridStrategy(GridStrategy):
             else:
                 signals.append(self.gen_lmt_buy_signal(new_down_px))
             self.latest_trade_px = self.grid[self.latest_trade_idx]
-            self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)-1]
+            self.piviot_px = self.grid[self.to_grid_idx(self.piviot_px)-1]
             # print(f"fake order at {self.grid[self.latest_trade_idx - 1]} triggered, grid shifted down [{self.grid[0]},{self.grid[-1]}]")
         return signals
     
@@ -159,7 +158,7 @@ class EmaGridStrategy(GridStrategy):
         signals = self.check_dummy_order(record['px'])
 
         self.ema = self.ema * self.alphadiff + record['px'] * self.alpha
-        ema_grid_px = self.closest_grid_px(self.ema)
+        ema_grid_px = self.to_grid_px(self.ema)
         # print(f"ema: {ema_grid_px}, piviot: {self.piviot_px}")
         new_delta = round((ema_grid_px - self.piviot_px) / self.grid_interval)
 
