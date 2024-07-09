@@ -101,8 +101,8 @@ class OkxExecutor:
     async def listen_orders(self):
         while True:
             data = await self.listen_order_client.recv_data()
-            print(f"order at px: {data['px']}, status: {data['state']}, tradeId: {data['tradeId']}")
-            self.logger.log(f"order at px: {data['px']}, status: {data['state']}, tradeId: {data['tradeId']}")
+            print(f"order at px: {data['px']}, status: {data['state']}, ordId: {data['ordId']}")
+            self.logger.log(f"order at px: {data['px']}, status: {data['state']}, ordId: {data['ordId']}")
 
             if data['instId'] not in self.positions:
                 self.positions[data['instId']] = .0
