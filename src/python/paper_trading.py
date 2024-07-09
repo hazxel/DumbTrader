@@ -11,7 +11,7 @@ async def main():
     inst_id = "ETH-USDT-SWAP"
     inst_type = "SWAP"
     N = 5000000
-    strategy = EmaGridStrategy(inst_id, 2937.31, 3019.72, 3, 0.1, N)
+    strategy = EmaGridStrategy(inst_id, 3066.31, 3073.72, 2, 0.1, N)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     credential_path = os.path.join(script_dir, '../../credentials/okx-paper-key.json')

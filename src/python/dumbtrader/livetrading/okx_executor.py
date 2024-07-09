@@ -5,6 +5,7 @@ import time
 from dumbtrader.strategy.strategy import *
 from dumbtrader.api.okxws.client import *
 from dumbtrader.api.okxws.constants import *
+from dumbtrader.monitoring.telegram_bot import *
 
 class OkxExecutor:
     def __init__(self, strategy, listen_trades_all_client, listen_order_client, place_order_client):
@@ -23,9 +24,11 @@ class OkxExecutor:
         # self.last_pxs = {'ETH-USDT': .0}
 
         # no statistics for now
+        self.logger = TelegramBotLogger()
 
     async def submit_order(self, order):
-        print(f"submitting order of sz: {order.volume}, px: {order.px}")
+        print(f"submit {order.side} order of sz: {order.volume}, px: {order.px}")
+        self.logger.log(f"submit {order.side} order of sz: {order.volume}, px: {order.px}")
         if order.side == OrderSide.BUY:
             order_side = OKX_SIDE.BUY
             pos_side = OKX_POS_SIDE.LONG
@@ -98,6 +101,9 @@ class OkxExecutor:
     async def listen_orders(self):
         while True:
             data = await self.listen_order_client.recv_data()
+            print(f"order at px: {data['px']}, status: {data['state']}, tradeId: {data['tradeId']}")
+            self.logger.log(f"order at px: {data['px']}, status: {data['state']}, tradeId: {data['tradeId']}")
+
             if data['instId'] not in self.positions:
                 self.positions[data['instId']] = .0
             if data['side'] == OKX_SIDE.BUY:
@@ -113,6 +119,9 @@ class OkxExecutor:
                 signals = self.strategy.on_order_filled(data['clOrdId'])
             finally:
                 self.strategy_mutex.release()
+            
+            print(f"triggered signal: {signals}")
+            self.logger.log(f"triggered signal: {signals}")
             
             await self.handle_signals(signals)
 
