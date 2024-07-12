@@ -34,20 +34,20 @@ class OkxWsClient:
                 try:
                     response = await asyncio.wait_for(self.websocket.recv(), timeout=25)
                     if response == 'pong':
-                        print(f"expecting a normal message push but recieved pong, ignoring...")
+                        print(f"[{self.__class__.__name__}] - expecting a normal message push but recieved pong, ignoring...")
                     else:
                         return response
                 except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-                    print("to keep connection alive, ping server...")
+                    print(f"[{self.__class__.__name__}] - to keep connection alive, ping server...")
                     await self.websocket.send('ping')
                     response = await asyncio.wait_for(self.websocket.recv(), timeout=25)
                     if response == 'pong':
-                        print(f"pong received, continue waiting...")
+                        print(f"[{self.__class__.__name__}] - pong received, continue waiting...")
                     else:
-                        print(f"expecting pong but recieved a normal message push, return it anyway")
+                        print(f"[{self.__class__.__name__}] - expecting pong but recieved a normal message push, return it anyway")
                         return response
             except Exception:
-                print("connection lost, create new one...")
+                print(f"[{self.__class__.__name__}] - connection lost, create new one...")
                 await self.renew_websocket()
 
     async def renew_websocket(self):
@@ -55,7 +55,7 @@ class OkxWsClient:
             await self.websocket.close()
             self.websocket = None
         self.websocket = await websockets.connect(self.uri)
-        print("websocket reconnected")
+        print(f"[{self.__class__.__name__}] - websocket reconnected")
 
     async def recv_data(self, col_filter=[]):
         response = await self.recv()
@@ -73,7 +73,7 @@ class OkxWsClient:
         data = json.loads(response)
         if "event" not in data or data["event"] != "subscribe" or "connId" not in data:
             raise Exception(f"subscribe failed, response: {response}")
-        print("subscribed")
+        print(f"[{self.__class__.__name__}] - subscribed")
         return data["connId"]
 
 class OkxWsPrivateClient(OkxWsClient):
@@ -99,7 +99,7 @@ class OkxWsPrivateClient(OkxWsClient):
         data = json.loads(response)
         if "event" not in data or data["event"] != "login" or "connId" not in data:
             raise Exception(f"login failed, response: {response}")
-        print("logged in")
+        print(f"[{self.__class__.__name__}] - logged in")
         return data["connId"]
 
 class OkxWsListenTradesAllClient(OkxWsClient):
@@ -140,12 +140,12 @@ class OkxWsListenOrdersClient(OkxWsPrivateClient):
         subscribe_msg = build_subscribe_orders_msg(OKX_WS_SUBSCRIBE_CHANNEL.ORDERS, self.inst_type, self.inst_id)
         connection_id = await super().subscribe(subscribe_msg)
         # on new private channel subscription, server will send channel-conn-count message to update connection count
-        print("waiting for channel-conn-count...")
+        print(f"[{self.__class__.__name__}] - waiting for channel-conn-count...")
         response = await self.recv()
         data = json.loads(response)
         if "event" not in data or data["event"] != "channel-conn-count":
-            raise Exception(f"recieve channel-conn-count failed, response: {response}")
-        print("channel-conn-count recieved")
+            raise Exception(f"[{self.__class__.__name__}] - recieve channel-conn-count failed, response: {response}")
+        print(f"[{self.__class__.__name__}] - channel-conn-count recieved")
         return connection_id
 
 class OkxWsPlaceOrderClient(OkxWsPrivateClient):

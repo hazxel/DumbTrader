@@ -10,8 +10,6 @@ from dumbtrader.api.okxws.constants import *
 async def main():
     inst_id = "ETH-USDT-SWAP"
     inst_type = "SWAP"
-    N = 5000000
-    strategy = EmaGridStrategy(inst_id, 3086.31, 3203.72, 4, 0.1, N)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     credential_path = os.path.join(script_dir, '../../credentials/okx-paper-key.json')
@@ -21,8 +19,11 @@ async def main():
         secret_key = config.get('secret_key')
         passphrase = config.get('passphrase')
 
-    executor = OkxExecutor(strategy, inst_id, inst_type, api_key, passphrase, secret_key)
-    executor.run()
+    async with AsyncExitStack() as stack:
+        listen_order_client = await stack.enter_async_context(OkxWsListenOrdersClient(OKX_WS_URI.PRIVATE_PAPER, api_key, passphrase, secret_key, inst_type, inst_id))
+        while True:
+            data = await listen_order_client.recv_data()
+            print(f"order update - px: {data['px']}, status: {data['state']}, ordId: {data['ordId']}")        
 
 
 if __name__ == '__main__':
