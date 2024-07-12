@@ -163,16 +163,26 @@ class OkxExecutor:
                 time.sleep(0.1)
 
     def run(self):
-        self.listen_orders().start()
+        threads = []
+        thread = self.listen_orders()
+        threads.append(thread)
+        thread.start()
         print("Waiting for OkxWsListenOrdersClient to be set...")
         while not self.listen_order_client:
             time.sleep(1)
         print("done.")
 
-        self.listen_queue().start()
+        thread = self.listen_queue()
+        threads.append(thread)
+        thread.start()
         print("Waiting for OkxWsPlaceOrderClient to be set...")
         while not self.place_order_client:
             time.sleep(1)
         print("done.")
     
-        self.listen_trades().start()
+        thread = self.listen_trades()
+        threads.append(thread)
+        thread.start()
+
+        for t in threads:
+            t.join()
