@@ -153,6 +153,8 @@ class OkxExecutor:
             self.place_order_client = cli
             while True:
                 if not self.signal_queue.empty():
+                    print("take signal from queue")
+                    self.logger.log("take signal from queue")
                     sig, order = self.signal_queue.get()
                     if sig == Signal.SUBMIT:
                         await self.submit_order(order)
