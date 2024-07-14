@@ -1,5 +1,4 @@
 import threading
-import queue
 import time
 from functools import wraps
 
@@ -26,24 +25,20 @@ class OkxExecutor:
         self.api_key = api_key
         self.passphrase = passphrase
         self.secret_key = secret_key
-
-        self.strategy_mutex = threading.Lock()
-
+        
         self.listen_trades_all_client = None
         self.listen_order_client = None
         self.place_order_client = None
 
-        self.signal_queue = queue.Queue()
-
+        self.strategy_mutex = threading.Lock()
+        self.signal_queue = None
         self.positions = {}
         # self.last_pxs = {'ETH-USDT': .0}
 
-        # no statistics for now
+        # TODO: no other statistics for now
         self.logger = TelegramBotLogger()
 
     async def submit_order(self, order):
-        print(f"submit {order.side} order of sz: {order.volume}, px: {order.px}")
-        self.logger.log(f"submit {order.side} order of sz: {order.volume}, px: {order.px}")
         if order.side == OrderSide.BUY:
             order_side = OKX_SIDE.BUY
             pos_side = OKX_POS_SIDE.LONG
@@ -67,6 +62,8 @@ class OkxExecutor:
         else:
             raise Exception(f"unsupported order type {order.type}")
         
+        print(f"submit {order_side} {pos_side} order at: {order.px}")
+        self.logger.log(f"submit {order.side} {pos_side} order at: {order.px}")
         await self.place_order_client.submit_order(
             client_order_id=order.internal_id, 
             inst_id=order.inst_id,
@@ -84,11 +81,10 @@ class OkxExecutor:
             client_order_id=order, 
             inst_id=self.listen_trades_all_client.inst_id) # problem here, may need to record cid-instid mapping
         
-
-    # signals: [(sig, order1), ...]
-    def handle_signals(self, signals):
+    # signals: [(sig, order1), ...] TODO: change this tuple it to a class
+    async def handle_signals(self, signals):
         for sig in signals:
-            self.signal_queue.put(sig)
+            await self.signal_queue.put(sig)
         signals.clear()
 
     @run_in_thread
@@ -101,8 +97,8 @@ class OkxExecutor:
             data['px'] = float(data['px'])
             data['sz'] = float(data['sz'])
             signals = self.strategy.on_start(data)
-
-            self.handle_signals(signals)
+            await self.handle_signals(signals)
+            print("strategy signals put to queue")
 
             while True:
                 data = await self.listen_trades_all_client.recv_data()
@@ -115,7 +111,7 @@ class OkxExecutor:
                 finally:
                     self.strategy_mutex.release()
 
-                self.handle_signals(signals)
+                await self.handle_signals(signals)
 
     @run_in_thread
     async def listen_orders(self):
@@ -123,9 +119,6 @@ class OkxExecutor:
             self.listen_order_client = cli
             while True:
                 data = await self.listen_order_client.recv_data()
-                print(f"order update - px: {data['px']}, status: {data['state']}, ordId: {data['ordId']}")
-                self.logger.log(f"order update - px: {data['px']}, status: {data['state']}, ordId: {data['ordId']}")
-
                 if data['instId'] not in self.positions:
                     self.positions[data['instId']] = .0
                 if data['side'] == OKX_SIDE.BUY:
@@ -133,58 +126,88 @@ class OkxExecutor:
                 elif data['side'] == OKX_SIDE.SELL:
                     self.positions[data['instId']] -= float(data['fillSz'])
 
-                if data['state'] != OKX_ORD_STATE.FILLED:
+                print(f"                                                {data['state']} order - px: {data['px']}, clOrdId: {data['clOrdId']}")
+
+                if data['state'] == OKX_ORD_STATE.FILLED:
+                    self.strategy_mutex.acquire()
+                    try:
+                        signals = self.strategy.on_order_filled(data['clOrdId'])
+                    finally:
+                        self.strategy_mutex.release()
+                elif data['state'] == OKX_ORD_STATE.CANCELED:
+                    print(f"cancel resp: {data}")
+                    self.strategy_mutex.acquire()
+                    try:
+                        signals = self.strategy.on_order_withdraw_success(data['clOrdId'])
+                    finally:
+                        self.strategy_mutex.release()
+                else:
                     continue
 
-                self.strategy_mutex.acquire()
-                try:
-                    signals = self.strategy.on_order_filled(data['clOrdId'])
-                finally:
-                    self.strategy_mutex.release()
-                
-                print(f"triggered signal: {signals}")
-                self.logger.log(f"triggered signal: {signals}")
-                
-                self.handle_signals(signals)
+                self.logger.log(f"{data['state']} order - px: {data['px']}, ordId: {data['ordId']}")
+                # for sig in signals:
+                #     print(f"triggered {sig[0]} signal: {sig[1]}")
+                #     self.logger.log(f"triggered {sig[0]} signal: {sig[1]}")
+                await self.handle_signals(signals)
 
     @run_in_thread
     async def listen_queue(self):
         async with OkxWsPlaceOrderClient(OKX_WS_URI.PRIVATE_PAPER, self.api_key, self.passphrase, self.secret_key) as cli:
             self.place_order_client = cli
+            self.signal_queue = asyncio.Queue()
+            
+            get_signal_task = asyncio.create_task(self.signal_queue.get())
+            recv_confirm_task = asyncio.create_task(self.place_order_client.confirm_order())
             while True:
-                if not self.signal_queue.empty():
-                    print("take signal from queue")
-                    self.logger.log("take signal from queue")
-                    sig, order = self.signal_queue.get()
+                # self.signal_queue.task_done()  # 标记任务已完成 todo: do we need this?
+                done, _ = await asyncio.wait(
+                    [get_signal_task, recv_confirm_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=25
+                )
+
+                if get_signal_task in done:
+                    sig, order = get_signal_task.result()
                     if sig == Signal.SUBMIT:
                         await self.submit_order(order)
                     elif sig == Signal.WITHDRAW:
                         await self.cancel_order(order)
                     else:
                         raise Exception(f"Unsupported signal: {sig}")
-                time.sleep(0.1)
+                    await asyncio.sleep(0.01) # order speed limit: 60 times/2s
+                    get_signal_task = asyncio.create_task(self.signal_queue.get())
+                elif recv_confirm_task in done:
+                    recv_confirm_task = asyncio.create_task(self.place_order_client.confirm_order())
+                else:
+                    # timeout, need to ping server, but cannot await on send/recv again
+                    get_signal_task.cancel()
+                    recv_confirm_task.cancel()
+                    try:
+                        await get_signal_task
+                    except asyncio.CancelledError:
+                        pass
+                    try:
+                        await recv_confirm_task
+                    except asyncio.CancelledError:
+                        pass
+                    await self.place_order_client.ping_pong()
+                    get_signal_task = asyncio.create_task(self.signal_queue.get())
+                    recv_confirm_task = asyncio.create_task(self.place_order_client.confirm_order())
 
     def run(self):
-        threads = []
-        thread = self.listen_orders()
-        threads.append(thread)
-        thread.start()
-        print("Waiting for OkxWsListenOrdersClient to be set...")
+        listen_orders_thread = self.listen_orders()
+        listen_orders_thread.start()
         while not self.listen_order_client:
-            time.sleep(1)
-        print("done.")
+            time.sleep(0.1)
 
-        thread = self.listen_queue()
-        threads.append(thread)
-        thread.start()
-        print("Waiting for OkxWsPlaceOrderClient to be set...")
+        listen_queue_thread = self.listen_queue()
+        listen_queue_thread.start()
         while not self.place_order_client:
-            time.sleep(1)
-        print("done.")
+            time.sleep(0.1)
     
-        thread = self.listen_trades()
-        threads.append(thread)
-        thread.start()
-
-        for t in threads:
-            t.join()
+        listen_trades_thread = self.listen_trades()
+        listen_trades_thread.start()
+        
+        listen_orders_thread.join()
+        listen_queue_thread.join()
+        listen_trades_thread.join()

@@ -37,16 +37,16 @@ class GridStrategy(Strategy):
         return (Signal.SUBMIT, LmtBuyOrder(self.inst_id, self.weight, px, id))
     
     # helper functions
-    def to_grid_idx(self, px):
+    def closest_grid_idx(self, px):
         idx = round((px - self.grid[0]) / self.grid_interval)
         return max(0, min(len(self.grid)-1, idx))
     
-    def to_grid_px(self, px):
-        return self.grid[self.to_grid_idx(px)]
+    def closest_grid_px(self, px):
+        return self.grid[self.closest_grid_idx(px)]
 
     def on_start(self, record):
         cur_px = record['px']
-        self.latest_trade_idx = self.to_grid_idx(cur_px)
+        self.latest_trade_idx = self.closest_grid_idx(cur_px)
         self.latest_trade_px = self.grid[self.latest_trade_idx]
         self.piviot_px = self.latest_trade_px
         signals = []
@@ -80,6 +80,7 @@ class EmaGridStrategy(GridStrategy):
         self.alphadiff = 1 - 1 / N
         self.delta = 0
         self.wait_to_withdraw = set()
+        self.ignore_on_filled = set()
 
     def on_start(self, record):
         sigs = super().on_start(record)
@@ -94,20 +95,43 @@ class EmaGridStrategy(GridStrategy):
     
     def on_order_filled(self, internal_ord_id):
         # print(f"filled order at px {self.id2px[internal_ord_id]}, last idx: {self.latest_trade_idx}, last px: {self.latest_trade_px}")
+        if internal_ord_id in self.ignore_on_filled: # filled event arrive in wrong order
+            cur_trade_px = self.id2px.pop(internal_ord_id)
+            self.ignore_on_filled.remove(internal_ord_id)
+            print(f"  ****  ignored order {internal_ord_id} of px {cur_trade_px}.")
+            return []
+        
         cur_trade_px = self.id2px.pop(internal_ord_id)
-        self.px2id.pop(cur_trade_px)
+        cur_trade_idx = self.closest_grid_idx(cur_trade_px)
+        cur_trade_internal_id = self.px2id.pop(cur_trade_px)
+        
         signals = []
-        if cur_trade_px > self.latest_trade_px:
-            trade_px = min(self.latest_trade_px, self.grid[self.latest_trade_idx + self.delta])
-            signals.append(self.gen_lmt_buy_signal(trade_px))
-            self.latest_trade_idx += 1
-            self.latest_trade_px = self.grid[self.latest_trade_idx]
-        elif cur_trade_px < self.latest_trade_px:
-            trade_px = max(self.latest_trade_px, self.grid[self.latest_trade_idx + self.delta])
-            signals.append(self.gen_lmt_sell_signal(trade_px))
-            self.latest_trade_idx -= 1
-            self.latest_trade_px = self.grid[self.latest_trade_idx]
+        if cur_trade_idx > self.latest_trade_idx:
+            while True:
+                should_triggered_idx = self.latest_trade_idx + max(0, self.delta) + 1
+                to_submit_px = min(self.latest_trade_px, self.grid[self.latest_trade_idx + self.delta])
+                signals.append(self.gen_lmt_buy_signal(to_submit_px))
+                self.latest_trade_idx += 1
+                self.latest_trade_px = self.grid[self.latest_trade_idx]
+                if should_triggered_idx == cur_trade_idx:
+                    break
+                else:
+                    print(f"  ****  will ignore {self.grid[should_triggered_idx]} of {self.px2id[self.grid[should_triggered_idx]]} once")
+                    self.ignore_on_filled.add(self.px2id[self.grid[should_triggered_idx]])
+        elif cur_trade_idx < self.latest_trade_idx:
+            while True:
+                should_triggered_idx = self.latest_trade_idx + min(0, self.delta) - 1
+                to_submit_px = max(self.latest_trade_px, self.grid[self.latest_trade_idx + self.delta])
+                signals.append(self.gen_lmt_sell_signal(to_submit_px))
+                self.latest_trade_idx -= 1
+                self.latest_trade_px = self.grid[self.latest_trade_idx]
+                if should_triggered_idx == cur_trade_idx:
+                    break
+                else:
+                    print(f"  ****  will ignore {self.grid[should_triggered_idx]} of {self.px2id[self.grid[should_triggered_idx]]} once")
+                    self.ignore_on_filled.add(self.px2id[self.grid[should_triggered_idx]])
         else:
+            print(self.px2id)
             raise Exception(f"order {internal_ord_id} with px {cur_trade_px} shouldn't be filled")
         return signals
     
@@ -117,6 +141,7 @@ class EmaGridStrategy(GridStrategy):
     def on_order_withdraw_success(self, internal_ord_id):
         px = self.id2px.pop(internal_ord_id)
         self.px2id.pop(px)
+        self.ignore_on_filled.discard(internal_ord_id)
         return []
     
     # on fake order filled, grid is shifted
@@ -135,7 +160,7 @@ class EmaGridStrategy(GridStrategy):
             else:
                 signals.append(self.gen_lmt_sell_signal(new_up_px))
             self.latest_trade_px = self.grid[self.latest_trade_idx]
-            self.piviot_px = self.grid[self.to_grid_idx(self.piviot_px)+1]
+            self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)+1]
             # print(f"fake order at {self.grid[self.latest_trade_idx + 1]} triggered, grid shifted up: [{self.grid[0]},{self.grid[-1]}]")
         while self.delta < 0 and px < self.grid[self.latest_trade_idx - 1]:
             # shift grid down
@@ -150,7 +175,7 @@ class EmaGridStrategy(GridStrategy):
             else:
                 signals.append(self.gen_lmt_buy_signal(new_down_px))
             self.latest_trade_px = self.grid[self.latest_trade_idx]
-            self.piviot_px = self.grid[self.to_grid_idx(self.piviot_px)-1]
+            self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)-1]
             # print(f"fake order at {self.grid[self.latest_trade_idx - 1]} triggered, grid shifted down [{self.grid[0]},{self.grid[-1]}]")
         return signals
     
@@ -158,7 +183,7 @@ class EmaGridStrategy(GridStrategy):
         signals = self.check_dummy_order(record['px'])
 
         self.ema = self.ema * self.alphadiff + record['px'] * self.alpha
-        ema_grid_px = self.to_grid_px(self.ema)
+        ema_grid_px = self.closest_grid_px(self.ema)
         # print(f"ema: {ema_grid_px}, piviot: {self.piviot_px}")
         new_delta = round((ema_grid_px - self.piviot_px) / self.grid_interval)
 

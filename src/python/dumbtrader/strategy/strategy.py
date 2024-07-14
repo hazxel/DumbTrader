@@ -46,6 +46,9 @@ class Order:
     def __eq__(self, __value: object) -> bool:
         return isinstance( __value, Order) and self.internal_id == __value.internal_id
     
+    def __str__(self) -> str:
+        return f"{self.type} {self.side} {self.volume} {self.inst_id}"
+    
 class LmtSellOrder(Order):
     def __init__(self, inst_id, volume, px, internal_id):
         super().__init__(OrderSide.SELL, OrderType.LIMIT, inst_id, volume, px, internal_id)

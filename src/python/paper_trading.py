@@ -1,5 +1,4 @@
 import asyncio
-from contextlib import AsyncExitStack
 import os
 
 from dumbtrader.livetrading.okx_executor import *
@@ -11,7 +10,7 @@ async def main():
     inst_id = "ETH-USDT-SWAP"
     inst_type = "SWAP"
     N = 5000000
-    strategy = EmaGridStrategy(inst_id, 3086.31, 3203.72, 4, 0.1, N)
+    strategy = EmaGridStrategy(inst_id=inst_id, low_lmt=2954.31, high_lmt=3347.72, grid_num=11, weight=10, N=N)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     credential_path = os.path.join(script_dir, '../../credentials/okx-paper-key.json')

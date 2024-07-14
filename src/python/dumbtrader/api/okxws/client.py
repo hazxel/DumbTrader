@@ -26,7 +26,15 @@ class OkxWsClient:
             self.websocket = None
 
     async def send(self, msg):
-        await self.websocket.send(msg)
+        while True:
+            try:
+                await self.websocket.send(msg)
+                return
+            except Exception as e:
+                print(f"Exception during send: {type(e).__name__}")
+                print(f"Exception message: {e}")
+                print(f"[{self.__class__.__name__}] - connection lost, waiting for other coroutine to create a new one...")
+                await asyncio.sleep(0.5)
 
     async def recv(self):
         while True:
@@ -34,28 +42,17 @@ class OkxWsClient:
                 try:
                     response = await asyncio.wait_for(self.websocket.recv(), timeout=25)
                     if response == 'pong':
-                        print(f"[{self.__class__.__name__}] - expecting a normal message push but recieved pong, ignoring...")
+                        print(f"[{self.__class__.__name__}] - expecting a normal message push but received pong, ignoring...")
                     else:
                         return response
                 except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-                    print(f"[{self.__class__.__name__}] - to keep connection alive, ping server...")
-                    await self.websocket.send('ping')
-                    response = await asyncio.wait_for(self.websocket.recv(), timeout=25)
-                    if response == 'pong':
-                        print(f"[{self.__class__.__name__}] - pong received, continue waiting...")
-                    else:
-                        print(f"[{self.__class__.__name__}] - expecting pong but recieved a normal message push, return it anyway")
+                    response = await self.ping_pong()
+                    if response != 'pong':
                         return response
-            except Exception:
-                print(f"[{self.__class__.__name__}] - connection lost, create new one...")
+            except Exception as e:
+                print(f"Exception type: {type(e).__name__}")
+                print(f"Exception message: {e}")
                 await self.renew_websocket()
-
-    async def renew_websocket(self):
-        if self.websocket:
-            await self.websocket.close()
-            self.websocket = None
-        self.websocket = await websockets.connect(self.uri)
-        print(f"[{self.__class__.__name__}] - websocket reconnected")
 
     async def recv_data(self, col_filter=[]):
         response = await self.recv()
@@ -66,6 +63,29 @@ class OkxWsClient:
         for col in col_filter:
             del data["data"][0][col]
         return data["data"][0]
+    
+    async def renew_websocket(self):
+        print(f"[{self.__class__.__name__}] - connection lost, create new one...")
+        if self.websocket:
+            await self.websocket.close()
+            self.websocket = None
+        self.websocket = await websockets.connect(self.uri)
+        print(f"[{self.__class__.__name__}] - websocket reconnected")
+    
+    async def ping_pong(self):
+        try:
+            # print(f"[{self.__class__.__name__}] - to keep connection alive, ping server...")
+            await self.websocket.send('ping')
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=25)
+            # if response == 'pong':
+            #     print(f"[{self.__class__.__name__}] - pong received, continue waiting...")
+            # else:
+            #     print(f"[{self.__class__.__name__}] - expecting pong but received {response}")
+            return response
+        except Exception as e:
+                print(f"Exception during ping pong: {type(e).__name__}")
+                print(f"Exception message: {e}")
+                await self.renew_websocket()
     
     async def subscribe(self, subscribe_msg):
         await self.send(subscribe_msg)
@@ -140,42 +160,40 @@ class OkxWsListenOrdersClient(OkxWsPrivateClient):
         subscribe_msg = build_subscribe_orders_msg(OKX_WS_SUBSCRIBE_CHANNEL.ORDERS, self.inst_type, self.inst_id)
         connection_id = await super().subscribe(subscribe_msg)
         # on new private channel subscription, server will send channel-conn-count message to update connection count
-        print(f"[{self.__class__.__name__}] - waiting for channel-conn-count...")
+        # print(f"[{self.__class__.__name__}] - waiting for channel-conn-count...")
         response = await self.recv()
         data = json.loads(response)
         if "event" not in data or data["event"] != "channel-conn-count":
-            raise Exception(f"[{self.__class__.__name__}] - recieve channel-conn-count failed, response: {response}")
-        print(f"[{self.__class__.__name__}] - channel-conn-count recieved")
+            raise Exception(f"[{self.__class__.__name__}] - receive channel-conn-count failed, response: {response}")
+        print(f"[{self.__class__.__name__}] - channel-conn-count received")
         return connection_id
 
 class OkxWsPlaceOrderClient(OkxWsPrivateClient):
+    async def confirm_order(self):
+        response = await self.recv()
+        if response == 'pong':
+            print(f"[{self.__class__.__name__}] - expecting confirmation but received pong, ignoring...")
+        else:
+            data = json.loads(response)
+            if ("code" not in data or data["code"] != "0" or
+                "op" not in data or data["op"] not in ["order", "cancel-order"] or
+                "data" not in data or len(data["data"])==0 or
+                "sCode" not in data["data"][0] or data["data"][0]["sCode"] != "0"
+            ):
+                raise Exception(f"confirm order failed, response: {response}")
+            else:
+                # TODO: not using order id generated by exchange for now
+                # add to dict? data["data"][0]["ordId"]
+                # print(f"{data['op']} {data['data'][0]['ordId']} confirmed.")
+                pass
+    
     async def submit_order(self, client_order_id, inst_id, td_mode, side, pos_side, order_type, sz, px):
         submit_order_msg = build_submit_order_msg(client_order_id, inst_id, td_mode, side, pos_side, order_type, sz, px)
         await self.send(submit_order_msg)
-        response = await self.recv()
-        data = json.loads(response)
-        if ("code" not in data or data["code"] != "0" or
-            "op" not in data or data["op"] != "order" or
-            "data" not in data or len(data["data"])==0 or
-            "sCode" not in data["data"][0] or data["data"][0]["sCode"] != "0"
-        ):
-            raise Exception(f"submit order failed, response: {response}")
-        # not using order id generated by exchange for now
-        # return data["data"][0]["ordId"]
     
     async def cancel_order(self, inst_id, client_order_id):
         cancel_order_msg = build_cancel_order_msg(inst_id, client_order_id)
         await self.send(cancel_order_msg)
-        response = await self.recv()
-        data = json.loads(response)
-        if ("code" not in data or data["code"] != "0" or
-            "op" not in data or data["op"] != "cancel-order" or
-            "data" not in data or len(data["data"])==0 or
-            "sCode" not in data["data"][0] or data["data"][0]["sCode"] != "0"
-        ):
-            raise Exception(f"cancel order failed, response: {response}")
-        # not using order id generated by exchange for now
-        # return data["data"][0]["ordId"]
 
 
 def build_json_msg(op, args, msg_id=None):
