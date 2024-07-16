@@ -79,7 +79,6 @@ class EmaGridStrategy(GridStrategy):
         self.alpha = 1 / N
         self.alphadiff = 1 - 1 / N
         self.delta = 0
-        self.wait_to_withdraw = set()
         self.ignore_on_filled = set()
 
     def on_start(self, record):
@@ -109,29 +108,36 @@ class EmaGridStrategy(GridStrategy):
         if cur_trade_idx > self.latest_trade_idx:
             while True:
                 should_triggered_idx = self.latest_trade_idx + max(0, self.delta) + 1
-                to_submit_px = min(self.latest_trade_px, self.grid[self.latest_trade_idx + self.delta])
-                signals.append(self.gen_lmt_buy_signal(to_submit_px))
+                should_triggered_px = self.grid[should_triggered_idx]
+                if self.delta >= 0:
+                    signals.append(self.gen_lmt_buy_signal(self.latest_trade_px))
+                elif self.latest_trade_idx + self.delta >= 0:
+                    signals.append(self.gen_lmt_buy_signal(self.grid[self.latest_trade_idx + self.delta]))
                 self.latest_trade_idx += 1
                 self.latest_trade_px = self.grid[self.latest_trade_idx]
                 if should_triggered_idx == cur_trade_idx:
                     break
                 else:
-                    print(f"  ****  will ignore {self.grid[should_triggered_idx]} of {self.px2id[self.grid[should_triggered_idx]]} once")
-                    self.ignore_on_filled.add(self.px2id[self.grid[should_triggered_idx]])
+                    print(f"  ****  will ignore {should_triggered_px} of {self.px2id[should_triggered_px]} once")
+                    self.ignore_on_filled.add(self.px2id[should_triggered_px])
+                    self.px2id.pop(should_triggered_px)
         elif cur_trade_idx < self.latest_trade_idx:
             while True:
                 should_triggered_idx = self.latest_trade_idx + min(0, self.delta) - 1
-                to_submit_px = max(self.latest_trade_px, self.grid[self.latest_trade_idx + self.delta])
-                signals.append(self.gen_lmt_sell_signal(to_submit_px))
+                should_triggered_px = self.grid[should_triggered_idx]
+                if self.delta <= 0:
+                    signals.append(self.gen_lmt_sell_signal(self.latest_trade_px))
+                elif self.latest_trade_idx + self.delta < len(self.grid):
+                    signals.append(self.gen_lmt_sell_signal(self.grid[self.latest_trade_idx + self.delta]))
                 self.latest_trade_idx -= 1
                 self.latest_trade_px = self.grid[self.latest_trade_idx]
                 if should_triggered_idx == cur_trade_idx:
                     break
                 else:
-                    print(f"  ****  will ignore {self.grid[should_triggered_idx]} of {self.px2id[self.grid[should_triggered_idx]]} once")
-                    self.ignore_on_filled.add(self.px2id[self.grid[should_triggered_idx]])
+                    print(f"  ****  will ignore {should_triggered_px} of {self.px2id[should_triggered_px]} once")
+                    self.ignore_on_filled.add(self.px2id[should_triggered_px])
+                    self.px2id.pop(should_triggered_px)
         else:
-            print(self.px2id)
             raise Exception(f"order {internal_ord_id} with px {cur_trade_px} shouldn't be filled")
         return signals
     
@@ -141,42 +147,44 @@ class EmaGridStrategy(GridStrategy):
     def on_order_withdraw_success(self, internal_ord_id):
         px = self.id2px.pop(internal_ord_id)
         self.px2id.pop(px)
-        self.ignore_on_filled.discard(internal_ord_id)
+        self.ignore_on_filled.discard(internal_ord_id) # need this?
         return []
     
     # on fake order filled, grid is shifted
     def check_dummy_order(self, px):
         signals = []
-        while self.delta > 0 and px > self.grid[self.latest_trade_idx + 1]:
-            # shift grid up
-            signals.append(self.gen_lmt_buy_signal(self.latest_trade_px))
-            self.delta -= 1
-            signals.append(self.gen_withdraw_signal(self.grid[0]))
-            self.grid.pop(0)
-            new_up_px = self.grid_new_up_px()
-            self.grid.append(new_up_px)
-            if new_up_px in self.wait_to_withdraw:
-                self.wait_to_withdraw.remove(new_up_px)
-            else:
-                signals.append(self.gen_lmt_sell_signal(new_up_px))
-            self.latest_trade_px = self.grid[self.latest_trade_idx]
-            self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)+1]
-            # print(f"fake order at {self.grid[self.latest_trade_idx + 1]} triggered, grid shifted up: [{self.grid[0]},{self.grid[-1]}]")
-        while self.delta < 0 and px < self.grid[self.latest_trade_idx - 1]:
-            # shift grid down
-            signals.append(self.gen_lmt_sell_signal(self.latest_trade_px))
-            self.delta += 1
-            signals.append(self.gen_withdraw_signal(self.grid[-1]))
-            self.grid.pop()
-            new_down_px = self.grid_new_down_px()
-            self.grid.insert(0, new_down_px)
-            if new_down_px in self.wait_to_withdraw:
-                self.wait_to_withdraw.remove(new_down_px)
-            else:
-                signals.append(self.gen_lmt_buy_signal(new_down_px))
-            self.latest_trade_px = self.grid[self.latest_trade_idx]
-            self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)-1]
-            # print(f"fake order at {self.grid[self.latest_trade_idx - 1]} triggered, grid shifted down [{self.grid[0]},{self.grid[-1]}]")
+        new_up_px = self.grid_new_up_px()
+        new_down_px = self.grid_new_down_px()
+        if self.delta > 0:
+            if self.latest_trade_idx + 1 == len(self.grid):
+                return []
+            while px > self.grid[self.latest_trade_idx + 1]:
+                # shift grid up
+                signals.append(self.gen_lmt_buy_signal(self.latest_trade_px))
+                self.delta -= 1
+                signals.append(self.gen_withdraw_signal(self.grid[0]))
+                self.grid.pop(0)
+                self.grid.append(new_up_px)
+                if self.delta + self.latest_trade_idx < len(self.grid)-1:
+                    signals.append(self.gen_lmt_sell_signal(new_up_px))
+                self.latest_trade_px = self.grid[self.latest_trade_idx]
+                self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)+1]
+                # print(f"fake order at {self.grid[self.latest_trade_idx + 1]} triggered, grid shifted up: [{self.grid[0]},{self.grid[-1]}]")
+        elif self.delta < 0:
+            if self.latest_trade_idx == 0:
+                return []
+            while px < self.grid[self.latest_trade_idx - 1]:
+                # shift grid down
+                signals.append(self.gen_lmt_sell_signal(self.latest_trade_px))
+                self.delta += 1
+                signals.append(self.gen_withdraw_signal(self.grid[-1]))
+                self.grid.pop()
+                self.grid.insert(0, new_down_px)
+                if self.delta + self.latest_trade_idx > 0:
+                    signals.append(self.gen_lmt_buy_signal(new_down_px))
+                self.latest_trade_px = self.grid[self.latest_trade_idx]
+                self.piviot_px = self.grid[self.closest_grid_idx(self.piviot_px)-1]
+                # print(f"fake order at {self.grid[self.latest_trade_idx - 1]} triggered, grid shifted down [{self.grid[0]},{self.grid[-1]}]")
         return signals
     
     def on_px_change(self, record):
@@ -191,9 +199,7 @@ class EmaGridStrategy(GridStrategy):
             for d in range(self.delta, new_delta):
                 if d >= 0:
                     to_withdraw = self.latest_trade_idx + d
-                    if (to_withdraw >= len(self.grid)):
-                        self.wait_to_withdraw.add(self.grid_new_up_px())
-                    else:
+                    if (to_withdraw < len(self.grid)):
                         px = self.grid[self.latest_trade_idx + d + 1]
                         signals.append(self.gen_withdraw_signal(px))
                         # print(f"delta: {self.delta} -> {new_delta}, withdraw {px}")
@@ -205,9 +211,7 @@ class EmaGridStrategy(GridStrategy):
             for d in range(new_delta, self.delta):
                 if d < 0:
                     to_withdraw = self.latest_trade_idx + d
-                    if (to_withdraw < 0):
-                        self.wait_to_withdraw.add(self.grid_new_down_px())
-                    else:
+                    if (to_withdraw >= 0):
                         px = self.grid[to_withdraw]
                         signals.append(self.gen_withdraw_signal(px))
                         # print(f"delta: {self.delta} -> {new_delta}, withdraw {px}")
