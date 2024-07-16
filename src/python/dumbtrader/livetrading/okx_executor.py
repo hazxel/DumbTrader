@@ -5,7 +5,7 @@ from functools import wraps
 from dumbtrader.strategy.strategy import *
 from dumbtrader.api.okxws.client import *
 from dumbtrader.api.okxws.constants import *
-from dumbtrader.monitoring.telegram_bot import *
+from dumbtrader.monitoring.logger import *
 
 def run_in_thread(async_func):
     @wraps(async_func)
@@ -36,7 +36,11 @@ class OkxExecutor:
         # self.last_pxs = {'ETH-USDT': .0}
 
         # TODO: no other statistics for now
-        self.logger = TelegramBotLogger()
+        self.logger = VersatileLogger(FileLogger(), TelegramBotLogger())
+        self.log("okx executor starts...")
+
+    def log(self, message, log_level=LogLevel.INFO):
+        self.logger.log(message, log_level)
 
     async def submit_order(self, order):
         if order.side == OrderSide.BUY:
@@ -62,8 +66,7 @@ class OkxExecutor:
         else:
             raise Exception(f"unsupported order type {order.type}")
         
-        print(f"submit {order_side} {pos_side} order at: {order.px}")
-        self.logger.log(f"submit {order.side} {pos_side} order at: {order.px}")
+        self.log(f"submit {order.side} {pos_side} order at: {order.px}")
         await self.place_order_client.submit_order(
             client_order_id=order.internal_id, 
             inst_id=order.inst_id,
@@ -75,8 +78,7 @@ class OkxExecutor:
             px=order.px)
 
     async def cancel_order(self, order):
-        print(f"canceling order: {order}")
-        self.logger.log(f"canceling order: {order}")
+        self.log(f"canceling order: {order}")
         await self.place_order_client.cancel_order(
             client_order_id=order, 
             inst_id=self.listen_trades_all_client.inst_id) # problem here, may need to record cid-instid mapping
@@ -98,7 +100,6 @@ class OkxExecutor:
             data['sz'] = float(data['sz'])
             signals = self.strategy.on_start(data)
             await self.handle_signals(signals)
-            print("strategy signals put to queue")
 
             while True:
                 data = await self.listen_trades_all_client.recv_data()
@@ -126,8 +127,6 @@ class OkxExecutor:
                 elif data['side'] == OKX_SIDE.SELL:
                     self.positions[data['instId']] -= float(data['fillSz'])
 
-                print(f"                                                {data['state']} order - px: {data['px']}, clOrdId: {data['clOrdId']}")
-
                 if data['state'] == OKX_ORD_STATE.FILLED:
                     self.strategy_mutex.acquire()
                     try:
@@ -135,7 +134,6 @@ class OkxExecutor:
                     finally:
                         self.strategy_mutex.release()
                 elif data['state'] == OKX_ORD_STATE.CANCELED:
-                    print(f"cancel resp: {data}")
                     self.strategy_mutex.acquire()
                     try:
                         signals = self.strategy.on_order_withdraw_success(data['clOrdId'])
@@ -144,10 +142,7 @@ class OkxExecutor:
                 else:
                     continue
 
-                self.logger.log(f"{data['state']} order - px: {data['px']}, ordId: {data['ordId']}")
-                # for sig in signals:
-                #     print(f"triggered {sig[0]} signal: {sig[1]}")
-                #     self.logger.log(f"triggered {sig[0]} signal: {sig[1]}")
+                self.log(f"{data['state']} order - px: {data['px']}, ordId: {data['ordId']}", LogLevel.DEBUG)
                 await self.handle_signals(signals)
 
     @run_in_thread
