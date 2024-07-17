@@ -1,12 +1,18 @@
 import requests
 
-def get_telegram_updates(url, offset=None):
-    url = url + 'getUpdates'
-    params = {'timeout': 100, 'offset': offset}
-    response = requests.get(url, params=params)
-    return response.json()
+BOT_API_BASE_URL = 'https://api.telegram.org/bot{}/'
 
-def send_telegram_message(url, chat_id, text):
-    url = url + 'sendMessage'
-    params = {'chat_id': chat_id, 'text': text}
-    requests.get(url, params=params)
+class TelegramBot:
+    def __init__(self, token):
+        self.url = BOT_API_BASE_URL.format(token)
+
+    def get_updates(self, offset=None):
+        url = self.url + 'getUpdates'
+        params = {'timeout': 100, 'offset': offset}
+        response = requests.get(url, params=params)
+        return response.json()
+
+    def send(self, chat_id, text):
+        url = self.url + 'sendMessage'
+        params = {'chat_id': chat_id, 'text': text}
+        requests.get(url, params=params)

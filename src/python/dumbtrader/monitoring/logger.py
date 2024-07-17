@@ -56,20 +56,19 @@ class TelegramBotLogger(Logger):
             config = json.load(file)
             token = config.get('token')
             self.channel_id = config.get('channel-id')
-        self.url = f'https://api.telegram.org/bot{token}/'
+        self.bot = TelegramBot(token)
         self.broken_connection = False
 
         try:
-            send_telegram_message(self.url, "test connection")
+            self.bot.send("test connection")
         except Exception:
             self.broken_connection = True
 
     def log(self, message, log_level=LogLevel.INFO):
         if log_level in [LogLevel.TRACE, LogLevel.DEBUG] or self.broken_connection:
-            print("return")
             return
         timestamp = int(time.time())
-        thread = threading.Thread(target=send_telegram_message, args=(self.url, self.channel_id, f"[{timestamp}]: {message}"))
+        thread = threading.Thread(target=self.bot.send, args=(self.channel_id, f"[{timestamp}]: {message}"))
         thread.daemon = True
         thread.start()
 

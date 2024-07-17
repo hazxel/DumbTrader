@@ -31,9 +31,9 @@ class OkxWsClient:
                 await self.websocket.send(msg)
                 return
             except Exception as e:
-                print(f"Exception during send: {type(e).__name__}")
-                print(f"Exception message: {e}")
-                print(f"[{self.__class__.__name__}] - connection lost, waiting for other coroutine to create a new one...")
+                print(f"[{self.__class__.__name__}] - Exception during send: {type(e).__name__}")
+                print(f"[{self.__class__.__name__}] - Exception message: {e}")
+                print(f"[{self.__class__.__name__}] - connection lost during send, waiting for other coroutine to create a new one...")
                 await asyncio.sleep(0.5)
 
     async def recv(self):
@@ -41,24 +41,28 @@ class OkxWsClient:
             try:
                 try:
                     response = await asyncio.wait_for(self.websocket.recv(), timeout=25)
-                    if response == 'pong':
+                    if not response:
+                        raise Exception("OksWsClient recevied empty response, connection might lost")
+                    elif response == 'pong':
                         print(f"[{self.__class__.__name__}] - expecting a normal message push but received pong, ignoring...")
                     else:
                         return response
                 except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                     response = await self.ping_pong()
-                    if response != 'pong':
+                    if not response:
+                        raise Exception("OksWsClient recevied empty response, connection might lost")
+                    elif response != 'pong':
                         return response
             except Exception as e:
-                print(f"Exception type: {type(e).__name__}")
-                print(f"Exception message: {e}")
+                print(f" - Exception type: {type(e).__name__}")
+                print(f" - Exception message: {e}")
                 await self.renew_websocket()
 
     async def recv_data(self, col_filter=[]):
         response = await self.recv()
         data = json.loads(response)
         if "data" not in data or not data["data"]:
-            print(f"data: {data}")
+            # print(f"data: {data}")
             raise Exception("invalid msg received, error code: {}, message: {}".format(data["code"], data["msg"]))
         for col in col_filter:
             del data["data"][0][col]
@@ -83,8 +87,8 @@ class OkxWsClient:
             #     print(f"[{self.__class__.__name__}] - expecting pong but received {response}")
             return response
         except Exception as e:
-                print(f"Exception during ping pong: {type(e).__name__}")
-                print(f"Exception message: {e}")
+                print(f"[{self.__class__.__name__}] - Exception during ping pong: {type(e).__name__}")
+                print(f"[{self.__class__.__name__}] - Exception message: {e}")
                 await self.renew_websocket()
     
     async def subscribe(self, subscribe_msg):
