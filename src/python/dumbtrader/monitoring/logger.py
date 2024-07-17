@@ -66,8 +66,30 @@ class TelegramBotLogger(Logger):
 
     def log(self, message, log_level=LogLevel.INFO):
         if log_level in [LogLevel.TRACE, LogLevel.DEBUG] or self.broken_connection:
+            print("return")
             return
         timestamp = int(time.time())
         thread = threading.Thread(target=send_telegram_message, args=(self.url, self.channel_id, f"[{timestamp}]: {message}"))
         thread.daemon = True
         thread.start()
+
+_TG_LOGGER_INSTANCE = TelegramBotLogger()
+_FILE_LOGGER_INSTANCE = FileLogger()
+_VERSATILE_LOGGER_INSTANCE = VersatileLogger(_TG_LOGGER_INSTANCE, _FILE_LOGGER_INSTANCE)
+_LOGGER = None
+
+def init_logger(logger_type):
+    global _LOGGER
+    if logger_type == TelegramBotLogger:
+        _LOGGER = _TG_LOGGER_INSTANCE
+    elif logger_type == FileLogger:
+        _LOGGER = _FILE_LOGGER_INSTANCE
+    elif logger_type == VersatileLogger:
+        _LOGGER = _VERSATILE_LOGGER_INSTANCE
+    else:
+        raise Exception(f"invalid logger type: {logger_type}")
+
+def log(message, log_level=LogLevel.INFO):
+    if not _LOGGER:
+        raise Exception("logger not initialized")
+    _LOGGER.log(message, log_level)
