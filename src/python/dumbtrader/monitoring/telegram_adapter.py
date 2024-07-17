@@ -15,4 +15,7 @@ class TelegramBot:
     def send(self, chat_id, text):
         url = self.url + 'sendMessage'
         params = {'chat_id': chat_id, 'text': text}
-        requests.get(url, params=params)
+        try:
+            requests.get(url, params=params)
+        except Exception as e:
+            print(f"Error sending http request: {e}")

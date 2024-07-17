@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 import json
 import os
@@ -57,10 +58,11 @@ class TelegramBotLogger(Logger):
             token = config.get('token')
             self.channel_id = config.get('channel-id')
         self.bot = TelegramBot(token)
+        self.executor = ThreadPoolExecutor(max_workers=10)  # 限制最大线程数量
         self.broken_connection = False
 
         try:
-            self.bot.send("test connection")
+            self.bot.send(self.channel_id, "test connection")
         except Exception:
             self.broken_connection = True
 
@@ -68,9 +70,8 @@ class TelegramBotLogger(Logger):
         if log_level in [LogLevel.TRACE, LogLevel.DEBUG] or self.broken_connection:
             return
         timestamp = int(time.time())
-        thread = threading.Thread(target=self.bot.send, args=(self.channel_id, f"[{timestamp}]: {message}"))
-        thread.daemon = True
-        thread.start()
+        print("going to send msg")
+        self.executor.submit(self.bot.send, self.channel_id, f"[{timestamp}]: {message}")
 
 _TG_LOGGER_INSTANCE = TelegramBotLogger()
 _FILE_LOGGER_INSTANCE = FileLogger()
