@@ -198,9 +198,9 @@ class EmaGridStrategy(GridStrategy):
         if new_delta > self.delta:
             for d in range(self.delta, new_delta):
                 if d >= 0:
-                    to_withdraw = self.latest_trade_idx + d
+                    to_withdraw = self.latest_trade_idx + d + 1
                     if (to_withdraw < len(self.grid)):
-                        px = self.grid[self.latest_trade_idx + d + 1]
+                        px = self.grid[to_withdraw]
                         signals.append(self.gen_withdraw_signal(px))
                         # print(f"delta: {self.delta} -> {new_delta}, withdraw {px}")
                 else:
