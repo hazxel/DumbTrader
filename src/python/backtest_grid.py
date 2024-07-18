@@ -18,8 +18,8 @@ def make_ema_generator(init_px, N=5000000):
     
 
 if __name__ == '__main__':
-    data_files = find_files_with_prefix(sys.argv[1], "ETH-USDT-SWAP-trades-all-1720")
-    N = 5000000
+    data_files = find_files_with_prefix(sys.argv[1], "ETH-USDT-SWAP-trades-all-17")
+    N = 10000000
     grid_stra = EmaGridStrategy("ETH-USDT", 3207.31, 3689.72, 13, 0.03, N)
     # grid_stra = GridStrategy("ETH-USDT", 3207.31, 3689.72, 13, 0.03)
     bt = backetester(grid_stra, data_files)
@@ -33,7 +33,9 @@ if __name__ == '__main__':
     print(f"total margin: {grid_stra.total_margin()}")
     print(f"profit rate (pnl/ttl_margin): {pnls[-1] * 100 / grid_stra.total_margin()}%")
 
-
+    pnls = pnls[::100]
+    pxs = pxs[::100]
+    emas = emas[::100]
     x_values = range(1, len(pnls) + 1)
 
     fig, ax1 = plt.subplots()
