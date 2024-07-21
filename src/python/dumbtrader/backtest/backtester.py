@@ -39,12 +39,12 @@ class backetester:
         if order.side == OrderSide.BUY:
             self.balance -= traded_amount
             self.positions[order.inst_id] += order.volume
-            # print(f"buy at {order.px}, position {self.positions[order.inst_id]}")
+            print(f"buy at {order.px if order.px != 0 else self.last_pxs[order.inst_id]}, position {self.positions[order.inst_id]}, pnl:{self.calc_pnl()}")
             return self.strategy.on_order_filled(order.internal_id)
         elif order.side == OrderSide.SELL:
             self.balance += traded_amount
             self.positions[order.inst_id] -= order.volume
-            # print(f"sell at {order.px}, position {self.positions[order.inst_id]}")
+            print(f"sell at {order.px if order.px != 0 else self.last_pxs[order.inst_id]}, position {self.positions[order.inst_id]}, pnl:{self.calc_pnl()}")
             return self.strategy.on_order_filled(order.internal_id)
         else:
             raise Exception(f"Unsupported order side: {order.side}")
@@ -111,7 +111,7 @@ class backetester:
         return self.balance \
             - self.mkt_ord_amt * MKT_FEE \
             - self.lmt_ord_amt * LMT_FEE \
-            + sum([ pos * self.last_pxs[inst] for inst, pos in self.positions.items()]) * (1 - MKT_FEE)
+            + sum([ pos * self.last_pxs[inst] * (1-MKT_FEE if pos>0 else 1+MKT_FEE) for inst, pos in self.positions.items()])
     
     def summary(self):
         return "summary:\n"\
@@ -122,6 +122,5 @@ class backetester:
             f"* transaction fee: {self.mkt_ord_amt*MKT_FEE+self.lmt_ord_amt*LMT_FEE}\n"\
             f"* final balance: {self.balance}\n"\
             f"* final position: {self.positions}\n"\
-            f"* final prices: {self.last_pxs}\n"\
             f"* pnl: {self.calc_pnl()}"
     

@@ -57,6 +57,14 @@ class LmtBuyOrder(Order):
     def __init__(self, inst_id, volume, px, internal_id):
         super().__init__(OrderSide.BUY, OrderType.LIMIT, inst_id, volume, px, internal_id)
 
+class MktSellOrder(Order):
+    def __init__(self, inst_id, volume, internal_id):
+        super().__init__(OrderSide.SELL, OrderType.MARKET, inst_id, volume, 0, internal_id)
+    
+class MktBuyOrder(Order):
+    def __init__(self, inst_id, volume, internal_id):
+        super().__init__(OrderSide.BUY, OrderType.MARKET, inst_id, volume, 0, internal_id)
+
 class Strategy(ABC):
     def __init__(self):
         pass
