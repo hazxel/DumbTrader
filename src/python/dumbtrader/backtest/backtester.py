@@ -73,7 +73,7 @@ class backetester:
 
     def run(self):
         # init strategy
-        record = next(gen_csv_record(self.file_list))
+        record = next(gen_record_from_pickled_dataframes(self.file_list))
         signals = self.strategy.on_start(record)
         self.last_pxs["ETH-USDT"] = record['px']
         self.handle_signals(signals)
@@ -82,7 +82,7 @@ class backetester:
         pnls = []
 
         # begin iteration
-        for record in gen_csv_record(self.file_list):
+        for record in gen_record_from_pickled_dataframes(self.file_list):
             signals.extend(self.strategy.on_px_change(record))
             while self.limit_buy_orders and self.limit_buy_orders[0].px > record['px']:
                 order = heapq.heappop(self.limit_buy_orders)

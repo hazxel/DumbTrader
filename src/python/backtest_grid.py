@@ -18,7 +18,7 @@ def make_ema_generator(init_px, N=5000000):
     
 
 if __name__ == '__main__':
-    data_files = find_files_with_prefix(sys.argv[1], "ETH-USDT-SWAP-trades-all-17")
+    data_files = find_pickled_dataframes_with_prefix(path=sys.argv[1], prefix="ETH-USDT-SWAP-trades-all-17")
     N = 10000000
     grid_stra = EmaGridStrategy("ETH-USDT", 3207.31, 3689.72, 13, 0.03, N)
     # grid_stra = GridStrategy("ETH-USDT", 3207.31, 3689.72, 13, 0.03)

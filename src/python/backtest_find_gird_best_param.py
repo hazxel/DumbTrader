@@ -4,7 +4,7 @@ from dumbtrader.backtest.backtester import *
 from dumbtrader.strategy.grid_strategy import *
 
 if __name__ == '__main__':
-    data_files = find_files_with_prefix(sys.argv[1], "ETH-USDT-SWAP-trades-all-17")
+    data_files = find_pickled_dataframes_with_prefix(path=sys.argv[1], prefix="ETH-USDT-SWAP-trades-all-17")
     print(f"processing {len(data_files)} files")
     print(data_files)
     for grid_num in range(2,30):
