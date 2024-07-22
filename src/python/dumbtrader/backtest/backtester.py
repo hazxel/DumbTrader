@@ -83,27 +83,28 @@ class backetester:
 
         # begin iteration
         for record in gen_record_from_pickled_dataframes(self.file_list):
-            signals.extend(self.strategy.on_px_change(record))
-            while self.limit_buy_orders and self.limit_buy_orders[0].px > record['px']:
+            signals.extend(self.strategy.on_trade(record))
+            cur_px = record['px']
+            while self.limit_buy_orders and self.limit_buy_orders[0].px > cur_px:
                 order = heapq.heappop(self.limit_buy_orders)
                 if order.internal_id in self.cancelled_orders:
                     self.cancelled_orders.remove(order.internal_id)
                     continue
                 signals.extend(self.execute_order(order))
 
-            while self.limit_sell_orders and self.limit_sell_orders[0].px < record['px']:
+            while self.limit_sell_orders and self.limit_sell_orders[0].px < cur_px:
                 order = heapq.heappop(self.limit_sell_orders)
                 if order.internal_id in self.cancelled_orders:
                     self.cancelled_orders.remove(order.internal_id)
                     continue
                 signals.extend(self.execute_order(order))
 
-            self.last_pxs["ETH-USDT"] = record['px']
+            self.last_pxs["ETH-USDT"] = cur_px
                
             # signals.append(strategy.onOrderBookChange(tuple))
 
             self.handle_signals(signals)
-            pxs.append(record['px'])
+            pxs.append(cur_px)
             pnls.append(self.calc_pnl())
         return (pxs, pnls)
 

@@ -69,7 +69,7 @@ class GridStrategy(Strategy):
         self.latest_trade_idx = bisect.bisect_left(self.grid, cur_trade_px)
         return signals
     
-    def on_px_change(self, record):
+    def on_trade(self, trade):
         return []
 
 class EmaGridStrategy(GridStrategy):
@@ -187,7 +187,7 @@ class EmaGridStrategy(GridStrategy):
                 # print(f"fake order at {self.grid[self.latest_trade_idx - 1]} triggered, grid shifted down [{self.grid[0]},{self.grid[-1]}]")
         return signals
     
-    def on_px_change(self, record):
+    def on_trade(self, record):
         signals = self.check_dummy_order(record['px'])
 
         self.ema = self.ema * self.alphadiff + record['px'] * self.alpha

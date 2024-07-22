@@ -78,5 +78,5 @@ class Strategy(ABC):
         return []
     
     @abstractmethod
-    def on_px_change(self, px_tuple):
+    def on_trade(self, trade):
         return []

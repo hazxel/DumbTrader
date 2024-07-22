@@ -108,7 +108,7 @@ class OkxExecutor:
 
                 self.strategy_mutex.acquire()
                 try:
-                    signals = self.strategy.on_px_change(data)
+                    signals = self.strategy.on_trade(data)
                 finally:
                     self.strategy_mutex.release()
 

@@ -44,8 +44,8 @@ class MultiEmaStrategy(Strategy):
     def on_order_filled(self, internal_ord_id):
         return []
     
-    def on_px_change(self, px_tuple):
-        cur_px = px_tuple['px']
+    def on_trade(self, trade):
+        cur_px = trade['px']
         for i in range(self.ema_count):
             self.emas[i].append(self.alphadiff[i] * self.emas[i][-1] + cur_px * self.alpha[i])
 
