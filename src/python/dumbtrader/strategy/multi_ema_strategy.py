@@ -45,15 +45,16 @@ class MultiEmaStrategy(Strategy):
         return []
     
     def on_px_change(self, px_tuple):
+        cur_px = px_tuple['px']
         for i in range(self.ema_count):
-            self.emas[i].append(self.alphadiff[i] * self.emas[i][-1] + px_tuple['px'] * self.alpha[i])
+            self.emas[i].append(self.alphadiff[i] * self.emas[i][-1] + cur_px * self.alpha[i])
 
         if self.init_ticks < self.periods[-1]:
             self.init_ticks += 1
             return []
         
-        isLong = px_tuple['px'] > self.emas[0][-1]
-        isShort = px_tuple['px'] < self.emas[0][-1]
+        isLong = cur_px > self.emas[0][-1]
+        isShort = cur_px < self.emas[0][-1]
         for i in range(self.ema_count - 1):
             if self.emas[i][-1] <= self.emas[i+1][-1]:
                 isLong = False
@@ -67,7 +68,7 @@ class MultiEmaStrategy(Strategy):
                 if self.continue_side == Position.SHORT:
                     if self.continue_counts > self.periods[0]:
                         self.position = Position.SHORT
-                        self.open_px = px_tuple['px']
+                        self.open_px = cur_px
                         return self.sell_signal()
                     else:
                         self.continue_counts += 1
@@ -79,7 +80,7 @@ class MultiEmaStrategy(Strategy):
                     # no! just self.emas[-2][-1] -5 > self.emas[-1][-1]
                     if self.continue_counts > self.periods[0]:
                         self.position = Position.LONG
-                        self.open_px = px_tuple['px']
+                        self.open_px = cur_px
                         return self.buy_signal()
                     else:
                         self.continue_counts += 1
@@ -89,20 +90,20 @@ class MultiEmaStrategy(Strategy):
             else:
                 self.continue_counts = 0
                 self.continue_side = Position.EMPTY
-        elif self.position == Position.LONG and (px_tuple['px'] < self.emas[-1][-1]):
+        elif self.position == Position.LONG and (cur_px < self.emas[-1][-1]):
             self.position = Position.EMPTY
             self.continue_side = Position.EMPTY
             self.continue_counts = 0
-            if px_tuple['px'] > self.open_px:
+            if cur_px > self.open_px:
                 self.win += 1
             else:
                 self.loss += 1
             return self.sell_signal()
-        elif self.position == Position.SHORT and (px_tuple['px'] > self.emas[-1][-1]):
+        elif self.position == Position.SHORT and (cur_px > self.emas[-1][-1]):
             self.position = Position.EMPTY
             self.continue_side = Position.EMPTY
             self.continue_counts = 0
-            if px_tuple['px'] < self.open_px:
+            if cur_px < self.open_px:
                 self.win += 1
             else:
                 self.loss += 1
