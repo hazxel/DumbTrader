@@ -22,7 +22,7 @@ if __name__ == '__main__':
     N = 10000000
     grid_stra = EmaGridStrategy("ETH-USDT", 2807.31, 3389.72, 13, 0.03, N)
     # grid_stra = GridStrategy("ETH-USDT", 3207.31, 3689.72, 13, 0.03)
-    bt = backetester(grid_stra, data_files)
+    bt = backtester(grid_stra, data_files)
     pxs, pnls = bt.run()
 
     ema_generator = make_ema_generator(pxs[0], N)

@@ -6,7 +6,7 @@ from dumbtrader.utils.file_utils import *
 MKT_FEE = 0.00041
 LMT_FEE = 0.00026
 
-class backetester:
+class backtester:
     def __init__(self, strategy, file_list):
         self.strategy = strategy
         self.file_list = file_list

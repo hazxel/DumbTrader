@@ -11,7 +11,7 @@ if __name__ == '__main__':
     data_files = find_pickled_dataframes_with_prefix(path=sys.argv[1], prefix="ETH-USDT-SWAP-trades-all-172")
     stra = MultiEmaStrategy("ETH-USDT", 1, 50000, 100000, 200000, 800000)
 
-    bt = backetester(stra, data_files)
+    bt = backtester(stra, data_files)
     pxs, pnls = bt.run()
 
     print(bt.summary())
