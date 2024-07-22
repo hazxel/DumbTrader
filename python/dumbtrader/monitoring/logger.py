@@ -52,7 +52,7 @@ class FileLogger(Logger):
 class TelegramBotLogger(Logger):
     def __init__(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(script_dir, '../../../../credentials/telegram-bot-config.json')
+        config_path = os.path.join(script_dir, '../../../credentials/telegram-bot-config.json')
         with open(config_path, 'r') as file:
             config = json.load(file)
             token = config.get('token')
