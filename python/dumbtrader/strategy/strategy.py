@@ -80,3 +80,11 @@ class Strategy(ABC):
     @abstractmethod
     def on_trade(self, trade):
         return []
+    
+    @abstractmethod
+    def on_order_submit_success(self, internal_ord_id):
+        return []
+    
+    @abstractmethod
+    def on_order_withdraw_success(self, internal_ord_id):
+        return []

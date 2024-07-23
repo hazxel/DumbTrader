@@ -70,7 +70,16 @@ class GridStrategy(Strategy):
         return signals
     
     def on_trade(self, trade):
-        return []
+        return super().on_trade(trade)
+    
+    def on_order_filled(self, internal_ord_id):
+        return super().on_order_filled(internal_ord_id)
+    
+    def on_order_submit_success(self, internal_ord_id):
+        return super().on_order_submit_success(internal_ord_id)
+    
+    def on_order_withdraw_success(self, internal_ord_id):
+        return super().on_order_withdraw_success(internal_ord_id)
 
 class EmaGridStrategy(GridStrategy):
     def __init__(self, inst_id, low_lmt, high_lmt, grid_num, weight, N=5000000):
