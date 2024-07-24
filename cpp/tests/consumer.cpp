@@ -1,7 +1,7 @@
-#include "ipc/posix_wrapper.h"
+#include "dumbtrader/ipc/posix_wrapper.h"
 
 int main() {
     auto sem = dumbtrader::POSIXNamedSemaphore("/mysem");
-    sem.signal();
+    sem.wait();
     return 0;
 }
