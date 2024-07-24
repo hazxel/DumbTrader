@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
+project(dumbtrader LANGUAGES C CXX)
+
 if(APPLE)
     set(CMAKE_C_COMPILER /usr/bin/clang)
     set(CMAKE_CXX_COMPILER /usr/bin/clang++)
@@ -8,7 +10,6 @@ elseif(UNIX)
 elseif(WIN32)
     message(WARNING "not tested under windows")
 endif()
-
 
 # if(NOT CMAKE_C_COMPILER)
 #     find_program(GCC_COMPILER NAMES gcc)
@@ -29,9 +30,11 @@ endif()
 #         message(FATAL_ERROR "No suitable C++ compiler found. Please install G++ or set CMAKE_CXX_COMPILER manually.")
 #     endif()
 # endif()
-
 # message(INFO "C compiler: ${CMAKE_C_COMPILER}")
 # message(INFO "C++ compiler: ${CMAKE_CXX_COMPILER}")
-project(dumbtrader LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 20)        # 设置C++标准为C++20
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # 确保使用指定的C++标准
+set(CMAKE_CXX_EXTENSIONS OFF)     # 禁用编译器特定的扩展
 
 add_subdirectory(src/dumbtrader)

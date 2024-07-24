@@ -4,9 +4,11 @@
 #include <semaphore.h>
 
 #include <stdexcept>
-#include <cerrno>    // 包含 errno
-#include <cstring>   // 包含 strerror
+#include <cerrno>    // includes errno
+#include <cstring>   // includes strerror
+#include <fcntl.h>   // includes O_CREAT, O_EXCL, ...
 #include <string>
+#include <iostream>
 
 namespace dumbtrader{
 class POSIXNamedSemaphore {
@@ -22,10 +24,10 @@ public:
 
     ~POSIXNamedSemaphore() {
         if (sem_destroy(sem_) != 0) {
-            throw std::runtime_error("Failed to destroy semaphore, errno: " + std::to_string(errno) + " (" + std::strerror(errno) + ")");
+            std::cerr << "Failed to destroy semaphore, errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")" << std::endl;
         }
         if (sem_unlink(semName_) != 0) {
-            throw std::runtime_error("Failed to unlink semaphore, errno: " + std::to_string(errno) + " (" + std::strerror(errno) + ")");
+            std::cerr << "Failed to unlink semaphore, errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")" << std::endl;
         }
         delete[] semName_;
     }
