@@ -8,6 +8,7 @@
 #include <cstring>   // 包含 strerror
 #include <string>
 
+namespace dumbtrader{
 class POSIXNamedSemaphore {
 public:
     POSIXNamedSemaphore(const std::string semName) {
@@ -52,5 +53,6 @@ private:
     char *semName_;
 };
 
+} // namespace dumbtrader
 
 #endif // DUMBTRADER_IPC_POSIX_WRAPPER_H_
