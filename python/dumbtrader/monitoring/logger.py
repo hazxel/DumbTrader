@@ -70,7 +70,6 @@ class TelegramBotLogger(Logger):
         if log_level in [LogLevel.TRACE, LogLevel.DEBUG] or self.broken_connection:
             return
         timestamp = int(time.time())
-        print("going to send msg")
         self.executor.submit(self.bot.send, self.channel_id, f"[{timestamp}]: {message}")
 
 _TG_LOGGER_INSTANCE = TelegramBotLogger()
