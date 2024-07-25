@@ -1,18 +1,18 @@
 #include <thread>
 #include <iostream>
 
-#include "dumbtrader/ipc/posix_wrapper.h"
+#include "dumbtrader/ipc/posix_semaphore.h"
 
 
 void consume() {
-    auto sem = dumbtrader::POSIXNamedSemaphore("/mysem");
+    auto sem = dumbtrader::PosixNamedSemaphore("/mysem");
     std::cout << "before wait\n";
     sem.wait();
     std::cout << "wait success\n";
 }
 
 void produce() {
-    auto sem = dumbtrader::POSIXNamedSemaphore("/mysem");
+    auto sem = dumbtrader::PosixNamedSemaphore("/mysem");
     std::cout << "before signal\n";
     sem.signal();
     std::cout << "signal success\n";
