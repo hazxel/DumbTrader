@@ -6,14 +6,16 @@
 
 void consume() {
     auto sem = dumbtrader::POSIXNamedSemaphore("/mysem");
+    std::cout << "before wait\n";
     sem.wait();
-    std::cout << "wait success" << std::endl;
+    std::cout << "wait success\n";
 }
 
 void produce() {
     auto sem = dumbtrader::POSIXNamedSemaphore("/mysem");
+    std::cout << "before signal\n";
     sem.signal();
-    std::cout << "signal success" << std::endl;
+    std::cout << "signal success\n";
 }
 
 int main() {
