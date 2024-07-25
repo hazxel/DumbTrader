@@ -1,4 +1,3 @@
-add_library(container)
 # file(GLOB_RECURSE CONTAINER_SOURCES 
 #     ${CMAKE_CURRENT_LIST_DIR}/*.cpp
 # )

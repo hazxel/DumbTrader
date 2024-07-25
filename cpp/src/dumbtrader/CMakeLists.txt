@@ -1,4 +1,3 @@
-# add_library(dumbtrader)
 add_library(dumbtrader SHARED
     $<TARGET_OBJECTS:ipc>
     # $<TARGET_OBJECTS:container>
