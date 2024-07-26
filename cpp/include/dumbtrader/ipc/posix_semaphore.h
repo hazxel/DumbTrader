@@ -14,7 +14,7 @@
 
 namespace dumbtrader{
 
-template <bool IsOwner>
+template <bool IsOwner = true>
 class PosixNamedSemaphore {
 public:
     PosixNamedSemaphore(const std::string &semName, int initial_value = DEFAULT_INIT_VALUE) {
