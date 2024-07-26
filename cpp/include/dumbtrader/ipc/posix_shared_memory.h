@@ -1,16 +1,10 @@
 #ifndef DUMBTRADER_IPC_POSIX_SHARED_MEMORY_H_
 #define DUMBTRADER_IPC_POSIX_SHARED_MEMORY_H_
 
-#include <fcntl.h>      // file operation flags (O_CREAT, O_EXCL, O_RDWR, ...)
-#include <stdexcept>
 #include <string>
-#include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...)
-#include <iostream>
+#include <sys/mman.h>   // shared memory
+#include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...), mode_t
 
-
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
 namespace dumbtrader{
 
@@ -24,8 +18,10 @@ public:
 
     size_t size() const;
 
+    static const mode_t SHM_PERM_MODE;
+
 private:
-    std::string name_;
+    char *shmName_;
     size_t size_;
     int shm_fd_;
     void* ptr_;

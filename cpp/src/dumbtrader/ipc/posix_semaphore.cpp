@@ -1,16 +1,19 @@
 #include "dumbtrader/ipc/posix_semaphore.h"
 
-#include <semaphore.h>
-
-#include <stdexcept>
-#include <cerrno>       // errno macro (`int * __error(void)`)
-#include <cstring>      // strerror function (errno to errmsg)
-#include <fcntl.h>      // file operation flags (O_CREAT, O_EXCL, ...)
-#include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...)
-#include <string>
 #include <iostream>
+#include <stdexcept>
+
+#include <semaphore.h>
+#include <cerrno>       // errno macro (`int * __error(void)`)
+#include <cstring>      // strerror function (errno to errmsg), strcpy
+#include <fcntl.h>      // file operation flags (O_CREAT, O_EXCL, ...)
+
 
 namespace dumbtrader{
+
+const mode_t PosixNamedSemaphore::SEM_PERM_MODE = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 644
+
+const unsigned int PosixNamedSemaphore::INITIAL_SEM_VALUE = 0;
 
 PosixNamedSemaphore::PosixNamedSemaphore(const std::string &semName) {
     semName_ = new char[semName.size() + 1]; // +1 for '\0'

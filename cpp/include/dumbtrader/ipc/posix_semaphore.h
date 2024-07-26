@@ -1,23 +1,12 @@
 #ifndef DUMBTRADER_IPC_POSIX_SEMAPHORE_H_
 #define DUMBTRADER_IPC_POSIX_SEMAPHORE_H_
 
-#include <semaphore.h>
-
-#include <cerrno>       // errno macro (`int * __error(void)`)
-#include <cstring>      // strerror function (errno to errmsg)
-#include <fcntl.h>      // file operation flags (O_CREAT, O_EXCL, ...)
-#include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...)
-
-#include <iostream>
-#include <stdexcept>
 #include <string>
+#include <semaphore.h>
+#include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...), mode_t
 
 
 namespace dumbtrader{
-
-const unsigned int INITIAL_SEM_VALUE = 0;
-const mode_t SEM_PERM_MODE = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-
 class PosixNamedSemaphore {
 public:
     PosixNamedSemaphore(const std::string &semName);
@@ -33,6 +22,10 @@ public:
     // void timedWait(int milliSec);
 
     void signal();
+
+    static const unsigned int INITIAL_SEM_VALUE;
+
+    static const mode_t SEM_PERM_MODE;
 
 private:
     sem_t *sem_;
