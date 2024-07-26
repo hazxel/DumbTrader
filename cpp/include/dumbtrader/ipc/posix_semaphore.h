@@ -13,6 +13,7 @@
 
 
 namespace dumbtrader{
+
 template <bool IsOwner>
 class PosixNamedSemaphore {
 public:
@@ -49,7 +50,7 @@ public:
         return sem_trywait(sem_) == 0;
     }
 
-    // void PosixNamedSemaphore::timedWait(int milliSec) {
+    // void timedWait(int milliSec) {
     //     struct timespec ts;
     //     if (sem_timedwait(sem_, &ts) != 0) {
     //         throw std::runtime_error("Failed to wait on semaphore with timeout: " + std::to_string(milliSec) + "ms");

@@ -5,14 +5,14 @@
 
 
 void consume() {
-    auto sem = dumbtrader::PosixNamedSemaphore<true>("/mysem");
+    auto sem = dumbtrader::PosixNamedSemaphore<false>("/mysem");
     std::cout << "before wait\n";
     sem.wait();
     std::cout << "wait success\n";
 }
 
 void produce() {
-    auto sem = dumbtrader::PosixNamedSemaphore<false>("/mysem");
+    auto sem = dumbtrader::PosixNamedSemaphore<true>("/mysem");
     std::cout << "before signal\n";
     sem.signal();
     std::cout << "signal success\n";
@@ -20,6 +20,7 @@ void produce() {
 
 int main() {
     auto t1 = std::thread(consume);
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     auto t2 = std::thread(produce);
     if (t1.joinable()) {
         t1.join();
