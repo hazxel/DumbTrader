@@ -33,7 +33,7 @@ endif()
 # message(INFO "C compiler: ${CMAKE_C_COMPILER}")
 # message(INFO "C++ compiler: ${CMAKE_CXX_COMPILER}")
 
-set(CMAKE_CXX_STANDARD 17)          # 设置 C++ 标准为 C++17
+set(CMAKE_CXX_STANDARD 20)          # 设置 C++ 标准为 C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # 确保使用指定的 C++ 标准
 set(CMAKE_CXX_EXTENSIONS OFF)       # 禁用编译器特定的扩展
 

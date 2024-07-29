@@ -1,7 +1,8 @@
 #ifndef DUMBTRADER_IPC_POSIX_SHARED_MEMORY_H_
 #define DUMBTRADER_IPC_POSIX_SHARED_MEMORY_H_
 
-#include <stdexcept>
+#include <dumbtrader/utils/error.h>
+
 #include <string>
 
 #include <cstring>      // strcpy
@@ -11,7 +12,14 @@
 #include <unistd.h>     // ftruncate
 
 
-namespace dumbtrader{
+namespace dumbtrader::ipc {
+
+constexpr const char* FMT_SHM_CREATE_FAILED = "Failed to create shared memory {}, errno: {}({})";
+constexpr const char* FMT_SHM_SET_SIZE_FAILED = "Failed to set size for shared memory {}, errno: {}({})";
+constexpr const char* FMT_SHM_MMAP_FAILED = "Failed to map shared memory {}, errno: {}({})";
+constexpr const char* FMT_SHM_MUNMAP_FAILED = "Failed to unmap shared memory {}, errno: {}({})";
+constexpr const char* FMT_SHM_UNLINK_FAILED = "Failed to unlink shared memory {}, errno: {}({})";
+
 
 template <bool IsOwner>
 class PosixSharedMemory {
@@ -24,20 +32,20 @@ public:
         constexpr int oflag = O_RDWR | (IsOwner ? O_CREAT : 0);
         int shm_fd = shm_open(shmName_, oflag, SHM_PERM_MODE);
         if (shm_fd == -1) {
-            throw std::runtime_error("Failed to create shared memory");
+            THROW_RUNTIME_ERROR(FMT_SHM_CREATE_FAILED, shmName_);
         }
         
         if constexpr (IsOwner) {
             if (ftruncate(shm_fd, size_) == -1) {
                 shm_unlink(shmName_);
-                throw std::runtime_error("Failed to set size for shared memory");
+                THROW_RUNTIME_ERROR(FMT_SHM_SET_SIZE_FAILED, shmName_);
             }
         }
 
         ptr_ = mmap(0, size_, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
         if (ptr_ == MAP_FAILED) {
             shm_unlink(shmName_);
-            throw std::runtime_error("Failed to map shared memory");
+            THROW_RUNTIME_ERROR(FMT_SHM_MMAP_FAILED, shmName_);
         }
 
         close(shm_fd);
@@ -64,13 +72,17 @@ public:
         return *this;
     }
 
-
     ~PosixSharedMemory() {
         if (ptr_) {
-            munmap(ptr_, size_);
+            if (munmap(ptr_, size_) != 0) {
+                LOG_CERROR(FMT_SHM_MUNMAP_FAILED, shmName_);
+            }
+
         }
         if constexpr (IsOwner) {
-            shm_unlink(shmName_);
+            if (shm_unlink(shmName_) != 0) {
+                LOG_CERROR(FMT_SHM_UNLINK_FAILED, shmName_);
+            }
         }
         delete[] shmName_;
     }

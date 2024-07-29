@@ -4,14 +4,14 @@
 #include<thread>
 
 void produce() {
-    auto shm = dumbtrader::PosixSharedMemory<true>("/my_shm", 15);
+    auto shm = dumbtrader::ipc::PosixSharedMemory<true>("/my_shm", 15);
     char* c = static_cast<char*>(shm.get());
     std::strcpy(c, "Hello, World!");
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 void consume() {
-    auto shm = dumbtrader::PosixSharedMemory<false>("/my_shm", 15);
+    auto shm = dumbtrader::ipc::PosixSharedMemory<false>("/my_shm", 15);
     char* c = static_cast<char*>(shm.get());
     std::cout << c << std::endl;
 }

@@ -1,18 +1,23 @@
 #ifndef DUMBTRADER_IPC_POSIX_SEMAPHORE_H_
 #define DUMBTRADER_IPC_POSIX_SEMAPHORE_H_
 
-#include <string>
-#include <iostream>
-#include <stdexcept>
+#include "dumbtrader/utils/error.h"
 
-#include <cerrno>       // errno macro (`int * __error(void)`)
-#include <cstring>      // strerror function (errno to errmsg), strcpy
+#include <string>
+
+#include <cstring>      // strcpy
 #include <fcntl.h>      // file operation flags (O_CREAT, O_EXCL, ...)
 #include <semaphore.h>
 #include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...), mode_t
 
 
-namespace dumbtrader{
+namespace dumbtrader::ipc {
+
+constexpr const char* FMT_SEM_CREATE_FAILED = "Failed to create semaphore {}, errno: {}({})";
+constexpr const char* FMT_SEM_CLOSE_FAILED = "Failed to close discriptor for semaphore {}, errno: {}({})";
+constexpr const char* FMT_SEM_UNLINK_FAILED = "Failed to unlink semaphore {}, errno: {}({})";
+constexpr const char* FMT_SEM_WAIT_FAILED = "Failed to wait semaphore {}, errno: {}({})";
+constexpr const char* FMT_SEM_SIGNAL_FAILED = "Failed to signal semaphore {}, errno: {}({})";
 
 template <bool IsOwner = true>
 class PosixNamedSemaphore {
@@ -22,17 +27,17 @@ public:
         std::strcpy(semName_, semName.c_str());
         sem_ = sem_open(semName_, O_CREAT, SEM_PERM_MODE, initial_value);
         if (sem_ == SEM_FAILED) {
-            throw std::runtime_error("Failed to initialize semaphore, errno: " + std::to_string(errno) + " (" + std::strerror(errno) + ")");
+            THROW_RUNTIME_ERROR(FMT_SEM_CREATE_FAILED, semName_);
         }
     }
 
     ~PosixNamedSemaphore() {
         if (sem_close(sem_) != 0) {
-            std::cerr << "Failed to close discriptor for semaphore \"" << semName_ << "\", errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")\n";
+            LOG_CERROR(FMT_SEM_CLOSE_FAILED, semName_);
         }
         if constexpr (IsOwner) {
             if (sem_unlink(semName_) != 0) {
-                std::cerr << "Failed to unlink semaphore \"" << semName_ << "\", errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")\n";
+                LOG_CERROR(FMT_SEM_UNLINK_FAILED, semName_);
             }
         }
         delete[] semName_;
@@ -41,7 +46,7 @@ public:
     // 等待信号量：如果信号量的值为0，调用此方法将阻塞线程直到信号量的值大于0
     void wait() {
         if (sem_wait(sem_) != 0) {
-            throw std::runtime_error("Failed to wait on semaphore");
+            THROW_RUNTIME_ERROR(FMT_SEM_WAIT_FAILED, semName_);
         }
     }
 
@@ -59,7 +64,7 @@ public:
 
     void signal() {
         if (sem_post(sem_) != 0) {
-            throw std::runtime_error("Failed to signal semaphore");
+            THROW_RUNTIME_ERROR(FMT_SEM_SIGNAL_FAILED, semName_);
         }
     }
 
@@ -78,6 +83,6 @@ const mode_t PosixNamedSemaphore<IsOwner>::SEM_PERM_MODE = S_IRUSR | S_IWUSR | S
 template<bool IsOwner>
 const unsigned int PosixNamedSemaphore<IsOwner>::DEFAULT_INIT_VALUE = 0;
 
-} // namespace dumbtrader
+} // namespace dumbtrader::ipc
 
 #endif // DUMBTRADER_IPC_POSIX_SEMAPHORE_H_
