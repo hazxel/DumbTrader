@@ -27,13 +27,13 @@ public:
     }
 
     ~PosixNamedSemaphore() {
+        if (sem_close(sem_) != 0) {
+            std::cerr << "Failed to close discriptor for semaphore \"" << semName_ << "\", errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")\n";
+        }
         if constexpr (IsOwner) {
             if (sem_unlink(semName_) != 0) {
                 std::cerr << "Failed to unlink semaphore \"" << semName_ << "\", errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")\n";
             }
-        }
-        if (sem_close(sem_) != 0) {
-            std::cerr << "Failed to close discriptor for semaphore \"" << semName_ << "\", errno: " << std::to_string(errno) << " (" << std::strerror(errno) << ")\n";
         }
         delete[] semName_;
     }

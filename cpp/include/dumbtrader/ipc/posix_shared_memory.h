@@ -13,44 +13,65 @@
 
 namespace dumbtrader{
 
-template <bool IsOwner = true>
+template <bool IsOwner>
 class PosixSharedMemory {
 public:
     PosixSharedMemory(const std::string& name, size_t size)
-        : shmName_(nullptr), size_(size), shm_fd_(-1), ptr_(nullptr) {
+        : shmName_(nullptr), size_(size), ptr_(nullptr) {
         shmName_ = new char[name.size() + 1]; // +1 for '\0'
         std::strcpy(shmName_, name.c_str());
+
+        constexpr int oflag = O_RDWR | (IsOwner ? O_CREAT : 0);
+        int shm_fd = shm_open(shmName_, oflag, SHM_PERM_MODE);
+        if (shm_fd == -1) {
+            throw std::runtime_error("Failed to create shared memory");
+        }
+        
         if constexpr (IsOwner) {
-            shm_fd_ = shm_open(shmName_, O_CREAT | O_RDWR, SHM_PERM_MODE);
-            if (shm_fd_ == -1) {
-                throw std::runtime_error("Failed to create shared memory");
-            }
-            if (ftruncate(shm_fd_, size_) == -1) {
+            if (ftruncate(shm_fd, size_) == -1) {
                 shm_unlink(shmName_);
                 throw std::runtime_error("Failed to set size for shared memory");
             }
-        } else {
-            shm_fd_ = shm_open(shmName_, O_RDWR, SHM_PERM_MODE);
-            if (shm_fd_ == -1) {
-                throw std::runtime_error("Failed to open shared memory");
-            }
         }
 
-        ptr_ = mmap(0, size_, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd_, 0);
+        ptr_ = mmap(0, size_, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
         if (ptr_ == MAP_FAILED) {
             shm_unlink(shmName_);
             throw std::runtime_error("Failed to map shared memory");
         }
+
+        close(shm_fd);
     }
+
+    PosixSharedMemory(const PosixSharedMemory&) = delete;
+
+    PosixSharedMemory& operator=(const PosixSharedMemory&) = delete;
+
+    PosixSharedMemory(PosixSharedMemory&& other) {
+        shmName_ = other.shmName_;
+        other.shmName_ = nullptr;
+        size_ = other.size_;
+        ptr_ = other.ptr_;
+        other.ptr_ = nullptr;
+    }
+
+    PosixSharedMemory& operator=(PosixSharedMemory&& other) {
+        shmName_ = other.shmName_;
+        other.shmName_ = nullptr;
+        size_ = other.size_;
+        ptr_ = other.ptr_;
+        other.ptr_ = nullptr;
+        return *this;
+    }
+
 
     ~PosixSharedMemory() {
         if (ptr_) {
             munmap(ptr_, size_);
         }
-        if (shm_fd_ != -1) {
-            close(shm_fd_);
+        if constexpr (IsOwner) {
+            shm_unlink(shmName_);
         }
-        shm_unlink(shmName_);
         delete[] shmName_;
     }
 
@@ -67,7 +88,6 @@ public:
 private:
     char *shmName_;
     size_t size_;
-    int shm_fd_;
     void* ptr_;
 };
 
