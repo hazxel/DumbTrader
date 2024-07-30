@@ -87,7 +87,7 @@ public:
         delete[] shmName_;
     }
 
-    void* get() const {
+    void* address() const {
         return ptr_;
     }
 

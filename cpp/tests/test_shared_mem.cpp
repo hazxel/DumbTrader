@@ -5,14 +5,14 @@
 
 void produce() {
     auto shm = dumbtrader::ipc::PosixSharedMemory<true>("/my_shm", 15);
-    char* c = static_cast<char*>(shm.get());
+    char* c = static_cast<char*>(shm.address());
     std::strcpy(c, "Hello, World!");
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 void consume() {
     auto shm = dumbtrader::ipc::PosixSharedMemory<false>("/my_shm", 15);
-    char* c = static_cast<char*>(shm.get());
+    char* c = static_cast<char*>(shm.address());
     std::cout << c << std::endl;
 }
 
