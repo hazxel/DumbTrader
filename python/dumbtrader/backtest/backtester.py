@@ -39,12 +39,12 @@ class backtester:
         if order.side == OrderSide.BUY:
             self.balance -= traded_amount
             self.positions[order.inst_id] += order.volume
-            print(f"buy at {order.px if order.px != 0 else self.last_pxs[order.inst_id]}, position {self.positions[order.inst_id]}, pnl:{self.calc_pnl()}")
+            # print(f"buy at {order.px if order.px != 0 else self.last_pxs[order.inst_id]}, position {self.positions[order.inst_id]}, pnl:{self.calc_pnl()}")
             return self.strategy.on_order_filled(order.internal_id)
         elif order.side == OrderSide.SELL:
             self.balance += traded_amount
             self.positions[order.inst_id] -= order.volume
-            print(f"sell at {order.px if order.px != 0 else self.last_pxs[order.inst_id]}, position {self.positions[order.inst_id]}, pnl:{self.calc_pnl()}")
+            # print(f"sell at {order.px if order.px != 0 else self.last_pxs[order.inst_id]}, position {self.positions[order.inst_id]}, pnl:{self.calc_pnl()}")
             return self.strategy.on_order_filled(order.internal_id)
         else:
             raise Exception(f"Unsupported order side: {order.side}")

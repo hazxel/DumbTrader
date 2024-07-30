@@ -21,30 +21,30 @@ if __name__ == '__main__':
     elapsed_time = end_time - start_time
     print(f"[backtest took: {elapsed_time:.4f} seconds]")
 
-    # start = 40000
-    # end = -1
-    # step = 100
+    start = 40000
+    end = -1
+    step = 100
 
-    # pnls = pnls[start:end:step]
-    # pxs = pxs[start:end:step]
-    # x_values = range(len(pnls))
+    pnls = pnls[start:end:step]
+    pxs = pxs[start:end:step]
+    x_values = range(len(pnls))
 
-    # fig, ax1 = plt.subplots()
-    # ax1.plot(x_values, pnls, marker='s', markersize=0.5, linewidth=0.3, linestyle='-', color='r', label='pnl')
-    # ax1.set_ylabel('pnl', color='r')
-    # ax1.tick_params(axis='y', labelcolor='r')
+    fig, ax1 = plt.subplots()
+    ax1.plot(x_values, pnls, marker='s', markersize=0.5, linewidth=0.3, linestyle='-', color='r', label='pnl')
+    ax1.set_ylabel('pnl', color='r')
+    ax1.tick_params(axis='y', labelcolor='r')
 
-    # ax2 = ax1.twinx()
-    # ax2.plot(x_values, pxs, marker='o', markersize=0.5, linewidth=0.3, linestyle=':', color='b', label='price')
-    # ax2.set_ylabel('instrument price', color='b')
-    # ax2.tick_params(axis='y', labelcolor='b')
+    ax2 = ax1.twinx()
+    ax2.plot(x_values, pxs, marker='o', markersize=0.5, linewidth=0.3, linestyle=':', color='b', label='price')
+    ax2.set_ylabel('instrument price', color='b')
+    ax2.tick_params(axis='y', labelcolor='b')
 
-    # ax2.plot(x_values, stra.emas[0][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
-    # ax2.plot(x_values, stra.emas[1][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
-    # ax2.plot(x_values, stra.emas[2][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
-    # ax2.plot(x_values, stra.emas[3][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
+    ax2.plot(x_values, stra.emas[0][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
+    ax2.plot(x_values, stra.emas[1][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
+    ax2.plot(x_values, stra.emas[2][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
+    ax2.plot(x_values, stra.emas[3][start:end:step], marker='o', markersize=0.2, linewidth=0.1, linestyle='-.', label='ema')
     
-    # plt.title('Ema strategy')
-    # plt.xlabel('time')
-    # # plt.ylabel('pnl')
-    # plt.show()
+    plt.title('Ema strategy')
+    plt.xlabel('time')
+    # plt.ylabel('pnl')
+    plt.show()
