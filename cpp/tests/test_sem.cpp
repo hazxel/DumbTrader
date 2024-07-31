@@ -1,9 +1,12 @@
-#include <thread>
-#include <unistd.h> // fork
-#include <iostream>
-
 #include "dumbtrader/ipc/posix_semaphore.h"
 #include "dumbtrader/utils/error.h"
+
+#include <thread>
+#include <iostream>
+
+#include <sys/wait.h>   // wait
+#include <unistd.h>     // fork
+
 
 void produce() {
     // prevent compiler release sem before sleep

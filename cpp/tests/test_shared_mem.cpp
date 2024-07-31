@@ -4,7 +4,9 @@
 #include<iostream>
 #include<thread>
 
-#include<unistd.h>
+#include <sys/wait.h>   // wait
+#include <unistd.h>     // fork
+
 
 void create() { // sleep 10s to check /dev/shm
     auto shm = new dumbtrader::ipc::PosixSharedMemory<true>("/my_shm", 15);
