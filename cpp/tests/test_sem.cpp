@@ -1,7 +1,6 @@
 #include "dumbtrader/ipc/posix_semaphore.h"
 #include "dumbtrader/utils/error.h"
 
-#include <thread>
 #include <iostream>
 
 #include <sys/wait.h>   // wait
@@ -13,7 +12,7 @@ void produce() {
     auto sem = new dumbtrader::ipc::PosixNamedSemaphore<true>("/mysem");
     sem->signal();
     std::cout << "signaled, wait 1s and quit...\n"; // in case consumer sem not opened
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    sleep(1);
     delete sem;
 }
 
