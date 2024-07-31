@@ -1,5 +1,9 @@
-rm -rf build
-mkdir build
+#!/bin/bash
+
+if [ ! -d "build" ]; then
+    mkdir build
+fi
+
 cd build
 cmake ..
 make
