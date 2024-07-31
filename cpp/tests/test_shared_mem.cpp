@@ -7,7 +7,8 @@ void produce() {
     auto shm = dumbtrader::ipc::PosixSharedMemory<true>("/my_shm", 15);
     char* c = static_cast<char*>(shm.address());
     std::strcpy(c, "Hello, World!");
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::cout << "string written to shared memory, wait 1s and quit...\n"; // in case consumer shm not opened
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 void consume() {
@@ -18,7 +19,6 @@ void consume() {
 
 int main() {
     auto t1 = std::thread(produce);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     auto t2 = std::thread(consume);
     if (t1.joinable()) {
         t1.join();

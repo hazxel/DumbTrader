@@ -8,7 +8,6 @@ void produce() {
     for(int i = 0; i < 20; ++i) {
         ringBuffer.put(i);
     }
-    std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 void consume() {
@@ -20,7 +19,6 @@ void consume() {
 
 int main() {
     auto t1 = std::thread(produce);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     auto t2 = std::thread(consume);
     if (t1.joinable()) {
         t1.join();
