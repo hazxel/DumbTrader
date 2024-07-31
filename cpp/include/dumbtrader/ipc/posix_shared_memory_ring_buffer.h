@@ -28,14 +28,17 @@ public:
           consumerSem_(shmName + "_consumer_sem", 0),
           buffer_(static_cast<Buffer*>(shm_.address())) 
     {
-        std::memset(buffer_, 0, size * sizeof(EleType) + sizeof(Buffer));
+        if constexpr (IsOwner) {
+            std::memset(buffer_, 0, size * sizeof(EleType) + sizeof(Buffer));
+        }
     }
     
     ~PosixSharedMemoryRingBuffer() = default;
 
-    void put(const EleType& ele) {
+    template<typename T>
+    void put(T&& ele) {
         producerSem_.wait();
-        buffer_->data[buffer_->tail] = ele; 
+        new (buffer_->data + buffer_->tail) EleType(std::forward<T>(ele));
         buffer_->tail = (buffer_->tail + 1) % size_;
         consumerSem_.signal();
     }

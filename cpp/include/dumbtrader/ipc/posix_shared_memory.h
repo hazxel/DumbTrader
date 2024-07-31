@@ -14,11 +14,11 @@
 
 namespace dumbtrader::ipc {
 
-constexpr const char* FMT_SHM_CREATE_FAILED = "Failed to create shared memory {}, errno: {}({})";
-constexpr const char* FMT_SHM_SET_SIZE_FAILED = "Failed to set size for shared memory {}, errno: {}({})";
-constexpr const char* FMT_SHM_MMAP_FAILED = "Failed to map shared memory {}, errno: {}({})";
-constexpr const char* FMT_SHM_MUNMAP_FAILED = "Failed to unmap shared memory {}, errno: {}({})";
-constexpr const char* FMT_SHM_UNLINK_FAILED = "Failed to unlink shared memory {}, errno: {}({})";
+constexpr const char* FMT_SHM_CREATE_FAILED = "Failed to create shared memory {}, errno: {} ({})";
+constexpr const char* FMT_SHM_SET_SIZE_FAILED = "Failed to set size for shared memory {}, errno: {} ({})";
+constexpr const char* FMT_SHM_MMAP_FAILED = "Failed to map shared memory {}, errno: {} ({})";
+constexpr const char* FMT_SHM_MUNMAP_FAILED = "Failed to unmap shared memory {}, errno: {} ({})";
+constexpr const char* FMT_SHM_UNLINK_FAILED = "Failed to unlink shared memory {}, errno: {} ({})";
 
 
 template <bool IsOwner>

@@ -13,11 +13,11 @@
 
 namespace dumbtrader::ipc {
 
-constexpr const char* FMT_SEM_CREATE_FAILED = "Failed to create semaphore {}, errno: {}({})";
-constexpr const char* FMT_SEM_CLOSE_FAILED = "Failed to close discriptor for semaphore {}, errno: {}({})";
-constexpr const char* FMT_SEM_UNLINK_FAILED = "Failed to unlink semaphore {}, errno: {}({})";
-constexpr const char* FMT_SEM_WAIT_FAILED = "Failed to wait semaphore {}, errno: {}({})";
-constexpr const char* FMT_SEM_SIGNAL_FAILED = "Failed to signal semaphore {}, errno: {}({})";
+constexpr const char* FMT_SEM_CREATE_FAILED = "Failed to create semaphore {}, errno: {} ({})";
+constexpr const char* FMT_SEM_CLOSE_FAILED = "Failed to close discriptor for semaphore {}, errno: {} ({})";
+constexpr const char* FMT_SEM_UNLINK_FAILED = "Failed to unlink semaphore {}, errno: {} ({})";
+constexpr const char* FMT_SEM_WAIT_FAILED = "Failed to wait semaphore {}, errno: {} ({})";
+constexpr const char* FMT_SEM_SIGNAL_FAILED = "Failed to signal semaphore {}, errno: {} ({})";
 
 template <bool IsOwner = true>
 class PosixNamedSemaphore {
