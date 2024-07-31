@@ -29,7 +29,7 @@ inline void substitutePlaceHolder(std::string& fmt, const T& value) {
     std::ostringstream oss;
     oss << value; 
 
-    int pos = fmt.find("{}", pos);
+    int pos = fmt.find("{}");
     if (pos != std::string::npos) {
         fmt.replace(pos, 2, oss.str());
     }
