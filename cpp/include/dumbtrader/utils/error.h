@@ -13,10 +13,10 @@
 #include <format>
 
 #define THROW_RUNTIME_ERROR(fmt, ...) \
-    throw std::runtime_error(std::format(fmt, __VA_ARGS__, errno, std::strerror(errno)))
+    throw std::runtime_error(std::format(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
 
 #define LOG_CERROR(fmt, ...) \
-    std::cerr << std::format(fmt, __VA_ARGS__, errno, std::strerror(errno)) << std::endl
+    std::cerr << std::format(fmt, ##__VA_ARGS__, errno, std::strerror(errno)) << std::endl
 
 #else // if __cplusplus < 202002L || !__has_include(<format>)
 
@@ -45,10 +45,10 @@ inline std::string genErrorString(const std::string &fmt, Args... args) {
 } // namespace dumbtrader::utils::detail
 
 #define THROW_RUNTIME_ERROR(fmt, ...) \
-    throw std::runtime_error(dumbtrader::utils::detail::genErrorString(fmt, __VA_ARGS__, errno, std::strerror(errno)))
+    throw std::runtime_error(dumbtrader::utils::detail::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
 
 #define LOG_CERROR(fmt, ...) \
-    std::cerr << dumbtrader::utils::detail::genErrorString(fmt, __VA_ARGS__, errno, std::strerror(errno)) << std::endl
+    std::cerr << dumbtrader::utils::detail::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)) << std::endl
 
 #endif // #if __cplusplus >= 202002L && __has_include(<format>)
 
