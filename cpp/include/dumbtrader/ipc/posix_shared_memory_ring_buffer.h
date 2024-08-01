@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <cstring> // std::memset
 
 
 namespace dumbtrader::ipc {

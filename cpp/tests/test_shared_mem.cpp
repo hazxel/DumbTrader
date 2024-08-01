@@ -1,7 +1,8 @@
 #include "dumbtrader/ipc/posix_shared_memory.h"
 #include "dumbtrader/utils/error.h"
 
-#include<iostream>
+#include <cstring>      // std::strcpy
+#include <iostream>
 
 #include <sys/wait.h>   // wait
 #include <unistd.h>     // fork

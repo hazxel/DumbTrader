@@ -9,7 +9,7 @@
 #include <fcntl.h>      // file operation flags (O_CREAT, O_EXCL, O_RDWR, ...)
 #include <sys/mman.h>   // shared memory
 #include <sys/stat.h>   // symbolic definitions for the permissions bits (S_IRUSR, S_IWUSR, ...), mode_t
-#include <unistd.h>     // ftruncate
+#include <unistd.h>     // ftruncate, close
 
 
 namespace dumbtrader::ipc {
