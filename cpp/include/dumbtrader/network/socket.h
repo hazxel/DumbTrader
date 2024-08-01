@@ -1,35 +1,66 @@
 #ifndef DUMBTRADER_NETWORK_SOCKET_H_
 #define DUMBTRADER_NETWORK_SOCKET_H_
 
-#include <arpa/inet.h>
+#include "dumbtrader/utils/error.h"
+
+#include <cstring>      // std::memset
+
+#include <arpa/inet.h>  // inet_addr (convert `char*` ip addr to `__uint32_t`)
+#include <fcntl.h>      // fnctl
+#include <netinet/in.h> // sockaddr_in (specific descriptor for IPv4 communication)
+#include <sys/socket.h> // sockaddr (generic descriptor for any socket operation), connect, listen, bind, accept
+#include <unistd.h>     // close
+
 
 namespace dumbtrader::network {
     
-// constexpr const char* FMT_SEM_CREATE_FAILED = "Failed to create semaphore {}, errno: {} ({})";
-
 constexpr const char* FMT_SOCKET_CREATE_FAILED = "Failed to create socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_BIND_FAILED = "Failed to bind socket to {}:{}, errno: {} ({})";
 constexpr const char* FMT_SOCKET_LISTEN_FAILED = "Failed to listen to socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_CONNECT_FAILED = "Failed to connect to socket, errno: {} ({})";
-// constexpr const char* FMT_SOCKET_ACCEPT_ERR = "socket accept error.";
+constexpr const char* FMT_SOCKET_ACCEPT_FAILED = "Failed to accept socket connection, errno: {} ({})";
 // constexpr const char* FMT_SOCKET_READ_ERR = "socket read error.";
 // constexpr const char* FMT_SOCKET_WRITE_ERR = "socket write error, connection may be closed.";
-// constexpr const char* FMT_SERVER_SOCKET_DISCONNECTED = "server socket disconnected.";
 
+namespace detail {
+inline void construct_sockaddr_in(struct sockaddr_in& addr, const char* ip, int port) {
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(ip);
+    addr.sin_port = htons(port);
+}
+}
 
-void construct_sockaddr_in(struct sockaddr_in& addr, const char* ip, int port);
+enum class Side {
+    SERVER,
+    CLIENT
+};
 
+template<Side side = Side::CLIENT>
 class Socket {
 public:
-    Socket();
-    ~Socket();
+    Socket() : sockfd_(-1) {
+        sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd_ == -1) {
+            THROW_RUNTIME_ERROR(FMT_SOCKET_CREATE_FAILED);
+        }
+    }
 
+    ~Socket() {
+        if (sockfd_ != -1) {
+            close(sockfd_);
+            sockfd_ = -1;
+        }
+    }
+
+    // server side only
     void bind(const char* ip, int port);
     void listen(int backlog);
-    void connect(const char* ip, int port);
-    // int accept();
+    int accept();
+    void set_nonblock();
 
-    // void set_nonblock();
+    // client side only
+    void connect(const char* ip, int port);
 
     inline int get_fd() const { return sockfd_; }
 private:
@@ -37,7 +68,53 @@ private:
     struct sockaddr_in addr_;
 };
 
+template <>
+void Socket<Side::CLIENT>::connect(const char* ip, int port) {
+    detail::construct_sockaddr_in(addr_, ip, port);
+    if(::connect(sockfd_, (sockaddr*) &addr_, sizeof(addr_)) == -1) {
+        THROW_RUNTIME_ERROR(FMT_SOCKET_CONNECT_FAILED, ip, port);
+    }
+}
 
+template <>
+void Socket<Side::SERVER>::bind(const char* ip, int port) {
+    detail::construct_sockaddr_in(addr_, ip, port);
+    if(::bind(sockfd_, (sockaddr*) &addr_, sizeof(addr_)) == -1) {
+        THROW_RUNTIME_ERROR(FMT_SOCKET_BIND_FAILED, ip, port);
+    }
+}
+
+template <>
+void Socket<Side::SERVER>::listen(int backlog) {
+    if(::listen(sockfd_, backlog) == -1) {
+        THROW_RUNTIME_ERROR(FMT_SOCKET_LISTEN_FAILED);
+    }
+}
+
+template <>
+int Socket<Side::SERVER>::accept() {
+    struct sockaddr_in clnt_addr;
+    std::memset(&clnt_addr, 0, sizeof(clnt_addr));
+    socklen_t clnt_addr_len = sizeof(clnt_addr);
+    int clnt_sockfd = ::accept(sockfd_, (sockaddr*)&clnt_addr, &clnt_addr_len);
+    if(clnt_sockfd == -1) {
+        THROW_RUNTIME_ERROR(FMT_SOCKET_ACCEPT_FAILED);
+    }
+    return clnt_sockfd;
+}
+
+// set socket to non-blocking mode, only after connection is established
+template <>
+void Socket<Side::SERVER>::set_nonblock() {
+    int flags = fcntl(sockfd_, F_GETFL, 0);
+    if(flags == -1) {
+        THROW_RUNTIME_ERROR("Failed to get fcntl flags");
+    }
+    flags |= O_NONBLOCK;
+    if(fcntl(sockfd_, F_SETFL, flags) == -1) {
+        THROW_RUNTIME_ERROR("Failed to set fcntl flags");
+    }
+}
 
 } // namespace dumbtrader::network
 
