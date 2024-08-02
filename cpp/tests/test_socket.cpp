@@ -15,44 +15,32 @@ constexpr const int  BUFFER_SIZE = 16;
 void run_client() {
     Socket<Side::CLIENT> client_socket;
     client_socket.connect(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
-    int sockfd = client_socket.get_fd();
 
     char buf[BUFFER_SIZE];
     std::memset(buf, 0, sizeof(buf));
     std::strcpy(buf, "Hello!");
-    if(write(sockfd, buf, sizeof(buf)) == -1) {
-        THROW_RUNTIME_ERROR("Failed to write socket, connection may be closed. errno: {} ({})");
-    }  
+    client_socket.send(buf, sizeof(buf));
 
-    memset(buf, 0, sizeof(buf));
-    ssize_t read_bytes = read(sockfd, buf, sizeof(buf));
-
-    if (read_bytes > 0){
-        std::cout << "Client received message from server: " << buf << std::endl;
-    } else if (read_bytes == 0) {
-        std::cout << "server socket disconnected" << std::endl;
-    } else if (read_bytes == -1) {
-        THROW_RUNTIME_ERROR("Failed to read socket, errno: {} ({})");
-    }
-    
+    std::memset(buf, 0, sizeof(buf));
+    client_socket.recv(buf, sizeof(buf));
+    std::cout << "Client received message from server: " << buf << std::endl;
 }
 
 void run_server() {
     Socket<Side::SERVER> server_socket;
     server_socket.bind(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
-
     server_socket.listen(1);
 
     int client_socket = server_socket.accept();
 
     char buf[BUFFER_SIZE];
     std::memset(buf, 0, sizeof(buf));
-    ssize_t read_bytes = read(client_socket, buf, sizeof(buf));
-
+    ssize_t read_bytes = ::recv(client_socket, buf, sizeof(buf), 0);
     std::cout << "Server received message from client: " << buf << std::endl;
-    send(client_socket, buf, read_bytes, 0);
     
-    close(client_socket);
+    ::send(client_socket, buf, read_bytes, 0);
+    
+    ::close(client_socket);
 }
 
 int main() {

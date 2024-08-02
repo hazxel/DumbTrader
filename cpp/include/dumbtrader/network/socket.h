@@ -20,8 +20,9 @@ constexpr const char* FMT_SOCKET_BIND_FAILED = "Failed to bind socket to {}:{}, 
 constexpr const char* FMT_SOCKET_LISTEN_FAILED = "Failed to listen to socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_CONNECT_FAILED = "Failed to connect to socket server {}:{}, errno: {} ({})";
 constexpr const char* FMT_SOCKET_ACCEPT_FAILED = "Failed to accept socket connection, errno: {} ({})";
-// constexpr const char* FMT_SOCKET_READ_ERR = "socket read error.";
-// constexpr const char* FMT_SOCKET_WRITE_ERR = "socket write error, connection may be closed.";
+constexpr const char* FMT_SOCKET_SEND_FAILED = "Failed to send message to socket, errno: {} ({})";
+constexpr const char* FMT_SOCKET_RECV_FAILED = "Failed to receive message from socket, errno: {} ({})";
+constexpr const char* FMT_SOCKET_RECV_SERVER_DISCONNECTED = "Failed to receive message from socket, server disconnected, errno: {} ({})";
 
 namespace detail {
 inline void construct_sockaddr_in(struct sockaddr_in& addr, const char* ip, int port) {
@@ -37,7 +38,7 @@ enum class Side {
     CLIENT
 };
 
-template<Side side = Side::CLIENT>
+template<Side = Side::CLIENT>
 class Socket {
 public:
     Socket() : sockfd_(-1) {
@@ -69,7 +70,25 @@ public:
     void connect(const char* ip, int port);
     // end of client side only functions
 
-    inline int get_fd() const { return sockfd_; }
+    ssize_t send(const void* buffer, size_t length, int flags = 0) const {
+        ssize_t bytesSent = ::send(sockfd_, buffer, length, flags);
+        if (bytesSent < 0) {
+            THROW_RUNTIME_ERROR(FMT_SOCKET_SEND_FAILED);
+        }
+        return bytesSent;
+    }
+
+    ssize_t recv(void* buffer, size_t length, int flags = 0) const {
+        ssize_t bytesReceived = ::recv(sockfd_, buffer, length, flags);
+        if (bytesReceived < 0) {
+            THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_FAILED);
+        } else if (bytesReceived == 0) {
+            THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_SERVER_DISCONNECTED);
+        }
+        return bytesReceived;
+    }
+
+    int get_fd() const { return sockfd_; }
 private:
     int sockfd_;
     struct sockaddr_in addr_;
