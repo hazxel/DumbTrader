@@ -15,9 +15,10 @@
 namespace dumbtrader::network {
     
 constexpr const char* FMT_SOCKET_CREATE_FAILED = "Failed to create socket, errno: {} ({})";
+constexpr const char* FMT_SOCKET_SET_REUSEADDR_FAILED = "Failed to set SO_REUSEADDR for socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_BIND_FAILED = "Failed to bind socket to {}:{}, errno: {} ({})";
 constexpr const char* FMT_SOCKET_LISTEN_FAILED = "Failed to listen to socket, errno: {} ({})";
-constexpr const char* FMT_SOCKET_CONNECT_FAILED = "Failed to connect to socket, errno: {} ({})";
+constexpr const char* FMT_SOCKET_CONNECT_FAILED = "Failed to connect to socket server {}:{}, errno: {} ({})";
 constexpr const char* FMT_SOCKET_ACCEPT_FAILED = "Failed to accept socket connection, errno: {} ({})";
 // constexpr const char* FMT_SOCKET_READ_ERR = "socket read error.";
 // constexpr const char* FMT_SOCKET_WRITE_ERR = "socket write error, connection may be closed.";
@@ -53,14 +54,20 @@ public:
         }
     }
 
-    // server side only
+    // server side only functions
+    template<bool EnableAddrReuse = true>
     void bind(const char* ip, int port);
-    void listen(int backlog);
-    int accept();
-    void set_nonblock();
 
-    // client side only
+    void listen(int backlog);
+
+    int accept();
+
+    void set_nonblock();
+    // end of server side only functions
+
+    // client side only functions
     void connect(const char* ip, int port);
+    // end of client side only functions
 
     inline int get_fd() const { return sockfd_; }
 private:
@@ -68,7 +75,7 @@ private:
     struct sockaddr_in addr_;
 };
 
-template <>
+template<>
 void Socket<Side::CLIENT>::connect(const char* ip, int port) {
     detail::construct_sockaddr_in(addr_, ip, port);
     if(::connect(sockfd_, (sockaddr*) &addr_, sizeof(addr_)) == -1) {
@@ -76,22 +83,31 @@ void Socket<Side::CLIENT>::connect(const char* ip, int port) {
     }
 }
 
-template <>
+template<>
+template<bool EnableAddrReuse>
 void Socket<Side::SERVER>::bind(const char* ip, int port) {
+    if constexpr (EnableAddrReuse) {
+        int opt = 1;
+        if (setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+            close(sockfd_);
+            THROW_RUNTIME_ERROR(FMT_SOCKET_SET_REUSEADDR_FAILED);
+        }
+    }
+
     detail::construct_sockaddr_in(addr_, ip, port);
     if(::bind(sockfd_, (sockaddr*) &addr_, sizeof(addr_)) == -1) {
         THROW_RUNTIME_ERROR(FMT_SOCKET_BIND_FAILED, ip, port);
     }
 }
 
-template <>
+template<>
 void Socket<Side::SERVER>::listen(int backlog) {
     if(::listen(sockfd_, backlog) == -1) {
         THROW_RUNTIME_ERROR(FMT_SOCKET_LISTEN_FAILED);
     }
 }
 
-template <>
+template<>
 int Socket<Side::SERVER>::accept() {
     struct sockaddr_in clnt_addr;
     std::memset(&clnt_addr, 0, sizeof(clnt_addr));
@@ -104,7 +120,7 @@ int Socket<Side::SERVER>::accept() {
 }
 
 // set socket to non-blocking mode, only after connection is established
-template <>
+template<>
 void Socket<Side::SERVER>::set_nonblock() {
     int flags = fcntl(sockfd_, F_GETFL, 0);
     if(flags == -1) {
