@@ -22,7 +22,7 @@ constexpr const char* FMT_SOCKET_CONNECT_FAILED = "Failed to connect to socket s
 constexpr const char* FMT_SOCKET_ACCEPT_FAILED = "Failed to accept socket connection, errno: {} ({})";
 constexpr const char* FMT_SOCKET_SEND_FAILED = "Failed to send message to socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_RECV_FAILED = "Failed to receive message from socket, errno: {} ({})";
-constexpr const char* FMT_SOCKET_RECV_SERVER_DISCONNECTED = "Failed to receive message from socket, server disconnected, errno: {} ({})";
+constexpr const char* FMT_SOCKET_RECV_PEER_DISCONNECTED = "Failed to receive message from socket, peer disconnected, errno: {} ({})";
 
 namespace detail {
 inline void construct_sockaddr_in(struct sockaddr_in& addr, const char* ip, int port) {
@@ -38,7 +38,7 @@ enum class Side {
     CLIENT
 };
 
-template<Side = Side::CLIENT>
+template<Side = Side::CLIENT, bool IsBlock = false>
 class Socket {
 public:
     Socket() : sockfd_(-1) {
@@ -47,6 +47,12 @@ public:
             THROW_RUNTIME_ERROR(FMT_SOCKET_CREATE_FAILED);
         }
     }
+
+    Socket(int sockfd) : sockfd_(sockfd) {
+        if (sockfd_ == -1) {
+            THROW_RUNTIME_ERROR(FMT_SOCKET_CREATE_FAILED);
+        }
+    } 
 
     ~Socket() {
         if (sockfd_ != -1) {
@@ -83,7 +89,7 @@ public:
         if (bytesReceived < 0) {
             THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_FAILED);
         } else if (bytesReceived == 0) {
-            THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_SERVER_DISCONNECTED);
+            THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_PEER_DISCONNECTED);
         }
         return bytesReceived;
     }

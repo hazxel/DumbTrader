@@ -31,16 +31,15 @@ void run_server() {
     server_socket.bind(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
     server_socket.listen(1);
 
-    int client_socket = server_socket.accept();
+    int client_socket_fd = server_socket.accept();
+    Socket<Side::CLIENT> client_socket{client_socket_fd};
 
     char buf[BUFFER_SIZE];
     std::memset(buf, 0, sizeof(buf));
-    ssize_t read_bytes = ::recv(client_socket, buf, sizeof(buf), 0);
+    ssize_t read_bytes = client_socket.recv(buf, sizeof(buf), 0);
     std::cout << "Server received message from client: " << buf << std::endl;
     
-    ::send(client_socket, buf, read_bytes, 0);
-    
-    ::close(client_socket);
+    client_socket.send(buf, read_bytes, 0);
 }
 
 int main() {
