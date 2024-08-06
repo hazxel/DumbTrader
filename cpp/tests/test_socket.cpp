@@ -4,6 +4,7 @@
 #include <cstring>
 #include <iostream>
 
+#include <sys/wait.h>   // wait
 #include <unistd.h>     // fork
 
 using namespace dumbtrader::network;
@@ -42,17 +43,17 @@ void run_server() {
 }
 
 int main() {
-    pid_t pid = fork();
+    pid_t pid = ::fork();
     if (pid < 0) {
         THROW_RUNTIME_ERROR("Fork failed");
         return 1;
     } else if (pid == 0) {
         run_server();
-        _exit(0);
+        ::_exit(0);
     } else {
-        sleep(1);
+        ::sleep(1);
         run_client();
-        wait(nullptr);
+        ::wait(nullptr);
     }
     return 0;
 }

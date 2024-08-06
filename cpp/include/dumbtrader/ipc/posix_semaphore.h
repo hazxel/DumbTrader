@@ -25,18 +25,18 @@ public:
     PosixNamedSemaphore(const std::string &semName, int initial_value = DEFAULT_INIT_VALUE) {
         semName_ = new char[semName.size() + 1]; // +1 for '\0'
         std::strcpy(semName_, semName.c_str());
-        sem_ = sem_open(semName_, O_CREAT, SEM_PERM_MODE, initial_value);
+        sem_ = ::sem_open(semName_, O_CREAT, SEM_PERM_MODE, initial_value);
         if (sem_ == SEM_FAILED) {
             THROW_RUNTIME_ERROR(FMT_SEM_CREATE_FAILED, semName_);
         }
     }
 
     ~PosixNamedSemaphore() {
-        if (sem_close(sem_) != 0) {
+        if (::sem_close(sem_) != 0) {
             LOG_CERROR(FMT_SEM_CLOSE_FAILED, semName_);
         }
         if constexpr (IsOwner) {
-            if (sem_unlink(semName_) != 0) {
+            if (::sem_unlink(semName_) != 0) {
                 LOG_CERROR(FMT_SEM_UNLINK_FAILED, semName_);
             }
         }
@@ -45,14 +45,14 @@ public:
 
     // 等待信号量：如果信号量的值为0，调用此方法将阻塞线程直到信号量的值大于0
     void wait() {
-        if (sem_wait(sem_) != 0) {
+        if (::sem_wait(sem_) != 0) {
             THROW_RUNTIME_ERROR(FMT_SEM_WAIT_FAILED, semName_);
         }
     }
 
     // 尝试等待信号量：如果信号量的值为0，调用此方法将返回 false 而不是阻塞线程
     bool tryWait() {
-        return sem_trywait(sem_) == 0;
+        return ::sem_trywait(sem_) == 0;
     }
 
     // void timedWait(int milliSec) {
@@ -63,7 +63,7 @@ public:
     // }
 
     void signal() {
-        if (sem_post(sem_) != 0) {
+        if (::sem_post(sem_) != 0) {
             THROW_RUNTIME_ERROR(FMT_SEM_SIGNAL_FAILED, semName_);
         }
     }

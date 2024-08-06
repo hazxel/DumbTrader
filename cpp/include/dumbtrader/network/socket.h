@@ -80,7 +80,7 @@ public:
 
     ~Socket() {
         if (sockfd_ != -1) {
-            close(sockfd_);
+            ::close(sockfd_);
             sockfd_ = -1;
         }
     }
@@ -147,7 +147,7 @@ void Socket<Side::SERVER, Mode::BLOCK>::bind(const char* ip, int port) {
     if constexpr (EnableAddrReuse) {
         int opt = 1;
         if (setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-            close(sockfd_);
+            ::close(sockfd_);
             THROW_RUNTIME_ERROR(FMT_SOCKET_SET_REUSEADDR_FAILED);
         }
     }

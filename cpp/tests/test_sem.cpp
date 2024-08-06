@@ -12,7 +12,7 @@ void produce() {
     auto sem = new dumbtrader::ipc::PosixNamedSemaphore<true>("/mysem");
     sem->signal();
     std::cout << "signaled, wait 1s and quit...\n"; // in case consumer sem not opened
-    sleep(1);
+    ::sleep(1);
     delete sem;
 }
 
@@ -24,16 +24,16 @@ void consume() {
 }
 
 int main() {
-    pid_t pid = fork();
+    pid_t pid = ::fork();
     if (pid < 0) {
         THROW_RUNTIME_ERROR("Fork failed");
         return 1;
     } else if (pid == 0) {
         produce();
-        _exit(0);
+        ::_exit(0);
     } else {
         consume();
-        wait(nullptr);
+        ::wait(nullptr);
     }
     return 0;
 }

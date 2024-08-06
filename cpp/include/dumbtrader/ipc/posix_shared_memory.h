@@ -30,25 +30,25 @@ public:
         std::strcpy(shmName_, name.c_str());
 
         constexpr int oflag = O_RDWR | (IsOwner ? O_CREAT : 0);
-        int shm_fd = shm_open(shmName_, oflag, SHM_PERM_MODE);
+        int shm_fd = ::shm_open(shmName_, oflag, SHM_PERM_MODE);
         if (shm_fd == -1) {
             THROW_RUNTIME_ERROR(FMT_SHM_CREATE_FAILED, shmName_);
         }
         
         if constexpr (IsOwner) {
-            if (ftruncate(shm_fd, size_) == -1) {
-                shm_unlink(shmName_);
+            if (::ftruncate(shm_fd, size_) == -1) {
+                ::shm_unlink(shmName_);
                 THROW_RUNTIME_ERROR(FMT_SHM_SET_SIZE_FAILED, shmName_);
             }
         }
 
-        ptr_ = mmap(0, size_, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+        ptr_ = ::mmap(0, size_, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
         if (ptr_ == MAP_FAILED) {
-            shm_unlink(shmName_);
+            ::shm_unlink(shmName_);
             THROW_RUNTIME_ERROR(FMT_SHM_MMAP_FAILED, shmName_);
         }
 
-        close(shm_fd);
+        ::close(shm_fd);
     }
 
     PosixSharedMemory(const PosixSharedMemory&) = delete;
