@@ -13,7 +13,7 @@ constexpr const int  DEFAULT_SERVER_PORT = 8888;
 constexpr const int  BUFFER_SIZE = 16;
 
 void run_client() {
-    Socket<Side::CLIENT> client_socket;
+    Socket<Side::CLIENT, Mode::BLOCK> client_socket;
     client_socket.connect(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
 
     char buf[BUFFER_SIZE];
@@ -27,13 +27,12 @@ void run_client() {
 }
 
 void run_server() {
-    Socket<Side::SERVER> server_socket;
+    Socket<Side::SERVER, Mode::BLOCK> server_socket;
     server_socket.bind(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
     server_socket.listen(1);
-
     int client_socket_fd = server_socket.accept();
-    Socket<Side::CLIENT> client_socket{client_socket_fd};
 
+    Socket<Side::CLIENT, Mode::BLOCK> client_socket{client_socket_fd};
     char buf[BUFFER_SIZE];
     std::memset(buf, 0, sizeof(buf));
     ssize_t read_bytes = client_socket.recv(buf, sizeof(buf), 0);
