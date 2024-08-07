@@ -100,6 +100,24 @@ class OkxWsClient:
         print(f"[{self.__class__.__name__}] - subscribed")
         return data["connId"]
 
+class OkxWsPublicClient(OkxWsClient):
+    def __init__(self, uri, subscribe_msg):
+        super().__init__(uri)
+        self.subscribe_msg = subscribe_msg
+    
+    async def __aenter__(self):
+        await super().__aenter__()
+        await self.subscribe()
+        return self
+    
+    async def renew_websocket(self):
+        await super().renew_websocket()
+        await self.subscribe()
+
+    async def subscribe(self):
+        connection_id = await super().subscribe(self.subscribe_msg)
+        return connection_id
+
 class OkxWsPrivateClient(OkxWsClient):
     def __init__(self, uri, api_key, passphrase, secret_key):
         super().__init__(uri)
@@ -126,25 +144,15 @@ class OkxWsPrivateClient(OkxWsClient):
         print(f"[{self.__class__.__name__}] - logged in")
         return data["connId"]
 
-class OkxWsListenTradesAllClient(OkxWsClient):
+class OkxWsListenTradesAllClient(OkxWsPublicClient):
     def __init__(self, uri, inst_id):
-        super().__init__(uri)
-        self.inst_id = inst_id
+        super().__init__(uri, build_subscribe_trades_all_msg(OKX_WS_SUBSCRIBE_CHANNEL.TRADES_ALL, inst_id))
     
-    async def __aenter__(self):
-        await super().__aenter__()
-        await self.subscribe()
-        return self
-    
-    async def renew_websocket(self):
-        await super().renew_websocket()
-        await self.subscribe()
+class OkxWsListenDepthClient(OkxWsPublicClient):
+    def __init__(self, uri, inst_id):
+        super().__init__(uri, build_subscribe_book_msg(OKX_WS_SUBSCRIBE_CHANNEL.BOOK_400_100MS, inst_id))
 
-    async def subscribe(self):
-        subscribe_msg = build_subscribe_trades_all_msg(OKX_WS_SUBSCRIBE_CHANNEL.TRADES_ALL, self.inst_id)
-        connection_id = await super().subscribe(subscribe_msg)
-        return connection_id
-
+# TODO: consider extract to OkxWsPrivateSubscriptionClient
 class OkxWsListenOrdersClient(OkxWsPrivateClient):
     def __init__(self, uri, api_key, passphrase, secret_key, inst_type, inst_id):
         super().__init__(uri, api_key, passphrase, secret_key)
@@ -219,6 +227,10 @@ def build_login_msg(api_key, passphrase, secret_key):
     return build_json_msg(OKX_WS_OP.LOGIN, login_args)
 
 def build_subscribe_trades_all_msg(channel, inst_id):
+    subscribe_args = [{"channel": channel,"instId": inst_id}]
+    return build_json_msg(OKX_WS_OP.SUBSCRIBE, subscribe_args)
+
+def build_subscribe_book_msg(channel, inst_id):
     subscribe_args = [{"channel": channel,"instId": inst_id}]
     return build_json_msg(OKX_WS_OP.SUBSCRIBE, subscribe_args)
 
