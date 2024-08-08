@@ -4,12 +4,23 @@
 #include <iostream>
 #include <sstream>
 
-#include <sched.h>
-
-
+// #include <sched.h>
 
 using dumbtrader::orderbook::OrderBook;
 using dumbtrader::orderbook::OrderSide;
+
+#ifdef __x86_64__
+inline uint64_t rdtscp() {
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtscp" : "=a"(lo), "=d"(hi) :: "%rcx");
+    return ((uint64_t)hi << 32) | lo;
+}
+#else
+inline uint64_t rdtscp() {
+    std::cout << "rdtscp not supported" << std::endl;
+    return 0;
+}
+#endif
 
 int main() {
     OrderBook book;
@@ -21,6 +32,8 @@ int main() {
         return 1;
     }
 
+    uint64_t start = rdtscp();
+
     std::string line;
     while (std::getline(file, line)) {
         // 输出每一行内容
@@ -29,23 +42,11 @@ int main() {
         float qty;
         int ord;
         iss >> px >> qty >> ord;
-        std::cout << px << qty << ord << std::endl;
         book.update<OrderSide::ASK>(px, qty, ord);
     }
 
-
-
-    // book.update<OrderSide::ASK>(2442.02, 90.4, 2);
-    // book.update<OrderSide::ASK>(2441.99, 0, 0);
-    // book.update<OrderSide::ASK>(2441.79, 45, 2);
-    // book.update<OrderSide::ASK>(2441.78, 8.1, 1);
-    // book.update<OrderSide::ASK>(2441.77, 0, 0);
-    // book.update<OrderSide::ASK>(2441.73, 56, 2);
-    // book.update<OrderSide::ASK>(2441.67, 32.9, 1);
-    // book.update<OrderSide::ASK>(2441.64, 53.4, 5);
-    // book.update<OrderSide::ASK>(2441.61, 0, 0);
-    // book.update<OrderSide::ASK>(2441.53, 71.7, 4);
-    // book.update<OrderSide::ASK>(2441.51, 112.6, 3);
-    // book.update<OrderSide::ASK>(2441.48, 141.3, 4);
+    uint64_t end = rdtscp();
+    std::cout << "CPU cycles: " << end - start << std::endl;
+    
     return 0;
 }
