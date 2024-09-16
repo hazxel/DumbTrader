@@ -22,7 +22,7 @@
 
 #include <sstream>
 
-namespace dumbtrader::utils::detail {
+namespace dumbtrader::utils::error {
 
 template<typename T>
 inline void substitutePlaceHolder(std::string& fmt, const T& value) {
@@ -42,13 +42,13 @@ inline std::string genErrorString(const std::string &fmt, Args... args) {
     return s;
 }
 
-} // namespace dumbtrader::utils::detail
+} // namespace dumbtrader::utils::error
 
 #define THROW_CERROR(fmt, ...) \
-    throw std::runtime_error(dumbtrader::utils::detail::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
+    throw std::runtime_error(dumbtrader::utils::error::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
 
 #define LOG_CERROR(fmt, ...) \
-    std::cerr << dumbtrader::utils::detail::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)) << std::endl
+    std::cerr << dumbtrader::utils::error::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)) << std::endl
 
 #endif // #if __cplusplus >= 202002L && __has_include(<format>)
 

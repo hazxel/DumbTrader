@@ -20,5 +20,7 @@ set(CMAKE_CXX_FLAGS -fPIC)
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now -pie")
 # set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,relro,-z,now")
 
+# set(CMAKE_BUILD_TYPE Debug)
+
 add_subdirectory(src)
 add_subdirectory(tests)
