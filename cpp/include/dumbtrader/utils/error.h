@@ -12,7 +12,7 @@
 
 #include <format>
 
-#define THROW_RUNTIME_ERROR(fmt, ...) \
+#define THROW_CERROR(fmt, ...) \
     throw std::runtime_error(std::format(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
 
 #define LOG_CERROR(fmt, ...) \
@@ -44,7 +44,7 @@ inline std::string genErrorString(const std::string &fmt, Args... args) {
 
 } // namespace dumbtrader::utils::detail
 
-#define THROW_RUNTIME_ERROR(fmt, ...) \
+#define THROW_CERROR(fmt, ...) \
     throw std::runtime_error(dumbtrader::utils::detail::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
 
 #define LOG_CERROR(fmt, ...) \

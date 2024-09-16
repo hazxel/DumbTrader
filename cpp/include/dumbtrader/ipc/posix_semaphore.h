@@ -27,7 +27,7 @@ public:
         std::strcpy(semName_, semName.c_str());
         sem_ = ::sem_open(semName_, O_CREAT, SEM_PERM_MODE, initial_value);
         if (sem_ == SEM_FAILED) {
-            THROW_RUNTIME_ERROR(FMT_SEM_CREATE_FAILED, semName_);
+            THROW_CERROR(FMT_SEM_CREATE_FAILED, semName_);
         }
     }
 
@@ -46,7 +46,7 @@ public:
     // 等待信号量：如果信号量的值为0，调用此方法将阻塞线程直到信号量的值大于0
     void wait() {
         if (::sem_wait(sem_) != 0) {
-            THROW_RUNTIME_ERROR(FMT_SEM_WAIT_FAILED, semName_);
+            THROW_CERROR(FMT_SEM_WAIT_FAILED, semName_);
         }
     }
 
@@ -64,7 +64,7 @@ public:
 
     void signal() {
         if (::sem_post(sem_) != 0) {
-            THROW_RUNTIME_ERROR(FMT_SEM_SIGNAL_FAILED, semName_);
+            THROW_CERROR(FMT_SEM_SIGNAL_FAILED, semName_);
         }
     }
 

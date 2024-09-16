@@ -25,7 +25,7 @@ void consume() {
 int main() {
     pid_t pid = ::fork();
     if (pid < 0) {
-        THROW_RUNTIME_ERROR("Fork failed");
+        THROW_CERROR("Fork failed");
         return 1;
     } else if (pid == 0) {
         produce();

@@ -15,7 +15,7 @@ constexpr const int  BUFFER_SIZE = 16;
 
 void run_client() {
     Socket<Side::CLIENT, Mode::BLOCK> client_socket;
-    client_socket.connect(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
+    client_socket.connectByIp(DEFAULT_SERVER_IP, DEFAULT_SERVER_PORT);
 
     char buf[BUFFER_SIZE];
     std::memset(buf, 0, sizeof(buf));
@@ -45,7 +45,7 @@ void run_server() {
 int main() {
     pid_t pid = ::fork();
     if (pid < 0) {
-        THROW_RUNTIME_ERROR("Fork failed");
+        THROW_CERROR("Fork failed");
         return 1;
     } else if (pid == 0) {
         run_server();

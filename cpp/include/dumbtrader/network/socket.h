@@ -7,6 +7,7 @@
 
 #include <arpa/inet.h>  // inet_addr (convert `char*` ip addr to `__uint32_t`)
 #include <fcntl.h>      // fnctl
+#include <netdb.h>      // addrinfo, getaddrinfo
 #include <netinet/in.h> // sockaddr_in (specific descriptor for IPv4 communication)
 #include <sys/socket.h> // sockaddr (generic descriptor for any socket operation), connect, listen, bind, accept
 #include <unistd.h>     // close
@@ -45,11 +46,11 @@ inline sockaddr_in constructSockAddrIn(const char* ip, int port) {
 inline void setFdNonblock(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if(flags == -1) {
-        THROW_RUNTIME_ERROR("Failed to get fcntl flags");
+        THROW_CERROR("Failed to get fcntl flags");
     }
     flags |= O_NONBLOCK;
     if(fcntl(fd, F_SETFL, flags) == -1) {
-        THROW_RUNTIME_ERROR("Failed to set fcntl flags");
+        THROW_CERROR("Failed to set fcntl flags");
     }
 }
 } // namespace detail
@@ -64,14 +65,14 @@ enum class Mode {
     NONBLOCK
 };
 
-template<Side S = Side::CLIENT, Mode M = Mode::BLOCK>
+template<Side S = Side::CLIENT, Mode M = Mode::NONBLOCK>
 class Socket {
 public:
-    Socket() : Socket(socket(AF_INET, SOCK_STREAM, 0)) {}
+    Socket() : Socket(::socket(AF_INET, SOCK_STREAM, 0)) {}
 
     Socket(int sockfd) : sockfd_(sockfd) {
         if (sockfd_ == -1) {
-            THROW_RUNTIME_ERROR(FMT_SOCKET_CREATE_FAILED);
+            THROW_CERROR(FMT_SOCKET_CREATE_FAILED);
         }
         if constexpr(M == Mode::NONBLOCK) {
             detail::setFdNonblock(sockfd_);
@@ -85,6 +86,7 @@ public:
         }
     }
 
+
     /* server side only functions */
     template<bool EnableAddrReuse = true>
     void bind(const char* ip, int port);
@@ -94,9 +96,13 @@ public:
     int accept();
     /* end of server side only functions */
 
+
     /* client side only functions */
-    void connect(const char* ip, int port);
+    void connectByIp(const char* ip, int port);
+    
+    void connectByHostname(const char* host, int port);
     /* end of client side only functions */
+
 
     // TODO: nonblock?
     ssize_t send(const void* buffer, size_t length, int flags = 0) const {
@@ -107,7 +113,7 @@ public:
                     // 发送缓冲区已满，需要稍后重试
                 }
             }
-            THROW_RUNTIME_ERROR(FMT_SOCKET_SEND_FAILED);
+            THROW_CERROR(FMT_SOCKET_SEND_FAILED);
         }
         return bytesSent;
     }
@@ -121,58 +127,84 @@ public:
                     // 发送缓冲区已满，需要稍后重试
                 }
             }
-            THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_FAILED);
+            THROW_CERROR(FMT_SOCKET_RECV_FAILED);
         } else if (bytesReceived == 0) {
-            THROW_RUNTIME_ERROR(FMT_SOCKET_RECV_PEER_DISCONNECTED);
+            THROW_CERROR(FMT_SOCKET_RECV_PEER_DISCONNECTED);
         }
         return bytesReceived;
     }
 
     int get_fd() const { return sockfd_; }
-private:
+protected:
     int sockfd_;
 };
 
 template<>
-void Socket<Side::CLIENT, Mode::BLOCK>::connect(const char* ip, int port) {
+inline void Socket<Side::CLIENT, Mode::BLOCK>::connectByIp(const char* ip, int port) {
     sockaddr_in addr = detail::constructSockAddrIn(ip, port);
     if(::connect(sockfd_, (sockaddr*) &addr, sizeof(addr)) == -1) {
-        THROW_RUNTIME_ERROR(FMT_SOCKET_CONNECT_FAILED, ip, port);
+        THROW_CERROR(FMT_SOCKET_CONNECT_FAILED, ip, port);
     }
 }
 
 template<>
+inline void Socket<Side::CLIENT, Mode::BLOCK>::connectByHostname(const char* host, int port) {
+    struct addrinfo hints, *res, *p;
+
+    std::memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (::getaddrinfo(host, std::to_string(port).c_str(), &hints, &res) != 0) {
+        THROW_CERROR("Failed to getaddrinfo");
+    }
+    
+    for (p = res; p != NULL; p = p->ai_next) {
+        sockfd_ = ::socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if (sockfd_ == -1) {
+            continue;
+        }
+        if (::connect(sockfd_, p->ai_addr, p->ai_addrlen) != -1) {
+            break;
+        }
+        ::close(sockfd_);
+    }
+
+    ::freeaddrinfo(res);
+}
+
+template<>
 template<bool EnableAddrReuse>
-void Socket<Side::SERVER, Mode::BLOCK>::bind(const char* ip, int port) {
+inline void Socket<Side::SERVER, Mode::BLOCK>::bind(const char* ip, int port) {
     if constexpr (EnableAddrReuse) {
         int opt = 1;
         if (setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
             ::close(sockfd_);
-            THROW_RUNTIME_ERROR(FMT_SOCKET_SET_REUSEADDR_FAILED);
+            THROW_CERROR(FMT_SOCKET_SET_REUSEADDR_FAILED);
         }
     }
 
     sockaddr_in addr = detail::constructSockAddrIn(ip, port);
     if(::bind(sockfd_, (sockaddr*) &addr, sizeof(addr)) == -1) {
-        THROW_RUNTIME_ERROR(FMT_SOCKET_BIND_FAILED, ip, port);
+        THROW_CERROR(FMT_SOCKET_BIND_FAILED, ip, port);
     }
 }
 
 template<>
-void Socket<Side::SERVER, Mode::BLOCK>::listen(int backlog) {
+inline void Socket<Side::SERVER, Mode::BLOCK>::listen(int backlog) {
     if(::listen(sockfd_, backlog) == -1) {
-        THROW_RUNTIME_ERROR(FMT_SOCKET_LISTEN_FAILED);
+        THROW_CERROR(FMT_SOCKET_LISTEN_FAILED);
     }
 }
 
 template<>
-int Socket<Side::SERVER, Mode::BLOCK>::accept() {
+inline int Socket<Side::SERVER, Mode::BLOCK>::accept() {
     struct sockaddr_in clnt_addr;
     std::memset(&clnt_addr, 0, sizeof(clnt_addr));
     socklen_t clnt_addr_len = sizeof(clnt_addr);
     int clnt_sockfd = ::accept(sockfd_, (sockaddr*)&clnt_addr, &clnt_addr_len);
     if(clnt_sockfd == -1) {
-        THROW_RUNTIME_ERROR(FMT_SOCKET_ACCEPT_FAILED);
+        THROW_CERROR(FMT_SOCKET_ACCEPT_FAILED);
     }
     return clnt_sockfd;
 }
