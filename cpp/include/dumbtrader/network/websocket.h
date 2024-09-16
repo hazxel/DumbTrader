@@ -19,21 +19,56 @@
 
 namespace dumbtrader::network {
 
+namespace detail {
+#if __cplusplus >= 202002L && __has_include(<format>)
+
+#include <format>
+
+inline std::string buildServiceRequestMsg(const char* servicePath) {
+    return std::format(
+        "GET {} HTTP/1.1\r\n"
+        "Host: ws.okx.com\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n"
+        "Sec-WebSocket-Version: 13\r\n\r\n",
+        servicePath
+    );
+}
+
+#else // if __cplusplus < 202002L || !__has_include(<format>)
+
+#include <sstream>
+
+inline std::string buildServiceRequestMsg(const char* servicePath) {
+    std::ostringstream requestStream;
+    requestStream << "GET " << servicePath << " HTTP/1.1\r\n"
+                  << "Host: ws.okx.com\r\n"
+                  << "Upgrade: websocket\r\n"
+                  << "Connection: Upgrade\r\n"
+                  << "Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n"
+                  << "Sec-WebSocket-Version: 13\r\n\r\n";
+    return requestStream.str();
+}
+
+#endif // #if __cplusplus >= 202002L && __has_include(<format>)
+} // namespace dumbtrader::network::detail
+
 // constexpr const char* FMT_SEM_CREATE_FAILED = "Failed to create semaphore {}, errno: {} ({})";
 class WebSocketSecureClient {
 public:
     WebSocketSecureClient() : socket_(), ssl_ctx_(nullptr), ssl_(nullptr) {
-        SSL_library_init();
-        SSL_load_error_strings();
-        OpenSSL_add_ssl_algorithms();
+        ::SSL_library_init();
+        ::SSL_load_error_strings();
+        ::OpenSSL_add_ssl_algorithms();
 
-        ssl_ctx_ = SSL_CTX_new(TLS_client_method());
-        if (ssl_ctx_ == NULL) {
-            throw dumbtrader::utils::openssl::getOpenSSLError();
+        ssl_ctx_ = ::SSL_CTX_new(::TLS_client_method());
+        if (ssl_ctx_ == nullptr) {
+            throw dumbtrader::utils::openssl::getException();
         }
 
-        SSL_CTX_set_min_proto_version(ssl_ctx_, TLS1_3_VERSION);
-        SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_DH_USE);
+        ::SSL_CTX_set_min_proto_version(ssl_ctx_, TLS1_3_VERSION);
+        ::SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_DH_USE);
 
         // int use_cert = SSL_CTX_use_certificate_file(ctx, "/Users/boyan/Documents/playground/DumbTrader/credentials/certificate.crt" , SSL_FILETYPE_PEM);
         // int use_prv = SSL_CTX_use_PrivateKey_file(ctx, "/Users/boyan/Documents/playground/DumbTrader/credentials/private.key", SSL_FILETYPE_PEM);
@@ -42,60 +77,44 @@ public:
         //     std::cerr << "Private key does not match the public certificate" << std::endl;
         // }
 
-        ssl_ = SSL_new(ssl_ctx_);
+        ssl_ = ::SSL_new(ssl_ctx_);
     }
 
     ~WebSocketSecureClient() {
-        if (ssl_ != nullptr) {
-            SSL_free(ssl_);
-            ssl_ = nullptr;
-        }
-        if (ssl_ctx_ != nullptr) {
-            SSL_CTX_free(ssl_ctx_);
-            ssl_ctx_ = nullptr;
-        }
+        close();
     }
 
     void init(const char *host, int port) {
         socket_.connectByHostname(host, port);
         int sockfd = socket_.get_fd();
-        SSL_set_fd(ssl_, sockfd);
-        SSL_set_connect_state(ssl_);
+        ::SSL_set_fd(ssl_, sockfd);
+        ::SSL_set_connect_state(ssl_);
 
         for (;;) {
-            int success = SSL_connect(ssl_);
+            int success = ::SSL_connect(ssl_);
             if(success == 1) {
                 break;
             }
 
-            unsigned long errorCode = SSL_get_error(ssl_, success);
+            unsigned long errorCode = ::SSL_get_error(ssl_, success);
             if (errorCode == SSL_ERROR_WANT_READ 
                 || errorCode == SSL_ERROR_WANT_WRITE
                 || errorCode == SSL_ERROR_WANT_X509_LOOKUP) {
-                std::cout << "continue" << std::endl;
-                continue;
+                dumbtrader::utils::openssl::logNonFatalError(errorCode);
             // } else if (err == SSL_ERROR_ZERO_RETURN) {
-            //     printf("SSL_connect: close notify received from peer");
-            //     exit(18);
+            //     std::cerr << "SSL_connect: close notify received from peer" << std::endl;
             } else {
-                throw dumbtrader::utils::openssl::getOpenSSLError(errorCode);
+                throw dumbtrader::utils::openssl::getException(errorCode);
             }
         }
     }
 
-    void connect() { // don't need mask
-        const std::string request = 
-        "GET /ws/v5/business HTTP/1.1\r\n" // or /ws/v5/public for some channels
-        "Host: ws.okx.com\r\n"
-        "Upgrade: websocket\r\n"
-        "Connection: Upgrade\r\n"
-        "Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n"
-        "Sec-WebSocket-Version: 13\r\n\r\n";
-        SSL_write(ssl_, request.c_str(), request.size());
+    void connectService(const char* servicePath) { // don't need mask
+        const std::string request = detail::buildServiceRequestMsg(servicePath);
+        ::SSL_write(ssl_, request.c_str(), request.size());
     }
 
-    void send() {
-        std::string message = R"({"op": "subscribe", "args": [{"channel": "trades-all","instId": "ETH-USDT-SWAP"}]})";
+    void send(const std::string& message) {
         std::vector<unsigned char> frame;
         
         // Create the WebSocket frame header
@@ -128,11 +147,11 @@ public:
             frame.push_back(message[i] ^ mask[i % 4]);
         }
 
-        SSL_write(ssl_, frame.data(), frame.size());
+        ::SSL_write(ssl_, frame.data(), frame.size());
 
         // subscribe response
         char buffer[4096];
-        int bytes = SSL_read(ssl_, buffer, sizeof(buffer) - 1);
+        int bytes = ::SSL_read(ssl_, buffer, sizeof(buffer) - 1);
         if (bytes > 0) {
             buffer[bytes] = '\0';
             std::cout << "Received: " << buffer << std::endl;
@@ -146,7 +165,7 @@ public:
         unsigned char buffer[2];
         
         // Read the first 2 bytes of the WebSocket frame (fin, opcode, mask, payload length)
-        SSL_read(ssl_, buffer, 2);
+        ::SSL_read(ssl_, buffer, 2);
         
         bool fin = (buffer[0] & 0x80) != 0;
         unsigned char opcode = buffer[0] & 0x0F;
@@ -156,11 +175,11 @@ public:
         // Handle extended payload lengths (126 or 127)
         if (payload_len == 126) {
             unsigned char extended_payload[2];
-            SSL_read(ssl_, extended_payload, 2);
+            ::SSL_read(ssl_, extended_payload, 2);
             payload_len = (extended_payload[0] << 8) | extended_payload[1];
         } else if (payload_len == 127) {
             unsigned char extended_payload[8];
-            SSL_read(ssl_, extended_payload, 8);
+            ::SSL_read(ssl_, extended_payload, 8);
             // Handle 8-byte extended payload length
             // For simplicity, we'll assume it's small and only use the lower 4 bytes
             payload_len = (extended_payload[4] << 24) | (extended_payload[5] << 16) |
@@ -169,7 +188,7 @@ public:
         
         // Read the payload data
         std::vector<unsigned char> payload(payload_len);
-        SSL_read(ssl_, payload.data(), payload_len);
+        ::SSL_read(ssl_, payload.data(), payload_len);
 
         // Print the payload
         if (opcode == 0x1) {
@@ -184,7 +203,16 @@ public:
         }
     }
 
-    void close();
+    void close() {
+        if (ssl_ != nullptr) {
+            ::SSL_free(ssl_);
+            ssl_ = nullptr;
+        }
+        if (ssl_ctx_ != nullptr) {
+            ::SSL_CTX_free(ssl_ctx_);
+            ssl_ctx_ = nullptr;
+        }
+    }
 
 private: 
     Socket<Side::CLIENT, Mode::BLOCK> socket_;

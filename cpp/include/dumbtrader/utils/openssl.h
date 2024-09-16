@@ -12,16 +12,18 @@ public:
         : std::runtime_error(message) {}
 };
 
-inline OpenSSLException getOpenSSLError(unsigned long errorCode) {
-    std::string error_message(ERR_error_string(errorCode, nullptr));
-    return OpenSSLException(error_message);
+inline void logNonFatalError(unsigned long errorCode) {
+    std::cerr << "OpenSSL Non-fatal Error:" << ERR_error_string(errorCode, nullptr) << std::endl;
 }
 
-inline OpenSSLException getOpenSSLError() {
-    unsigned long err_code;
-    while ((err_code = ERR_get_error()) != 0) {
-        std::string error_message(ERR_error_string(err_code, nullptr));
-        return OpenSSLException(error_message);
+inline OpenSSLException getException(unsigned long errorCode) {
+    return OpenSSLException(ERR_error_string(errorCode, nullptr));
+}
+
+inline OpenSSLException getException() {
+    unsigned long errorCode = ERR_get_error();
+    if (errorCode != 0) {
+        return OpenSSLException(ERR_error_string(errorCode, nullptr));
     }
     return OpenSSLException("No OpenSSL error in the stack");
 }
