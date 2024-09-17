@@ -5,7 +5,6 @@
 #include "dumbtrader/network/socket.h"
 
 #include <cstring>
-#include <chrono>
 #include <random>
 
 #include <openssl/ssl.h>
@@ -69,8 +68,8 @@ WebSocketSecureClient::WebSocketSecureClient() : socket_(), ssl_ctx_(nullptr), s
     // if (!SSL_CTX_check_private_key(ctx)) { std::cerr << "Private key does not match public certificate\n"; }
     ssl_ = ::SSL_new(ssl_ctx_);
 
-    auto now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::srand(static_cast<unsigned int>(now));
+    std::random_device rd;
+    std::srand(rd());
 }
 
 void WebSocketSecureClient::connectService(const char *hostName, int port, const char* servicePath) {
