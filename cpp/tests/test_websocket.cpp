@@ -1,5 +1,7 @@
 #include "dumbtrader/network/websocket.h"
 
+#include <iostream>
+
 using namespace dumbtrader::network;
 
 constexpr const char HOST_NAME[] = "ws.okx.com";
@@ -11,10 +13,18 @@ int main() {
     WebSocketSecureClient client;
     client.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     client.send(SUBSCRIBE_MSG);
-    client.recv();
-    client.recv();
-    client.recv();
-    client.recv();
 
+    std::string msg;
+    client.recv(msg);
+    std::cout << msg << std::endl;
+    msg.clear();
+    client.recv(msg);
+    std::cout << msg << std::endl;
+    msg.clear();
+    client.recv(msg);
+    std::cout << msg << std::endl;
+    msg.clear();
+    client.recv(msg);
+    std::cout << msg << std::endl;
     return 0;
 }

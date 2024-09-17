@@ -4,16 +4,19 @@
 #include "dumbtrader/utils/openssl.h"
 #include "dumbtrader/network/socket.h"
 
+#include <cstring>
+#include <chrono>
+#include <random>
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
 namespace dumbtrader::network {
 
 namespace detail {
+
 #if __cplusplus >= 202002L && __has_include(<format>)
-
 #include <format>
-
 std::string buildServiceRequestMsg(const char* hostName, const char* servicePath) {
     return std::format(
         "GET {} HTTP/1.1\r\n"
@@ -26,11 +29,8 @@ std::string buildServiceRequestMsg(const char* hostName, const char* servicePath
         hostName
     );
 }
-
 #else // if __cplusplus < 202002L || !__has_include(<format>)
-
 #include <sstream>
-
 std::string buildServiceRequestMsg(const char* hostName, const char* servicePath) {
     std::ostringstream requestStream;
     requestStream << "GET " << servicePath << " HTTP/1.1\r\n"
@@ -41,8 +41,13 @@ std::string buildServiceRequestMsg(const char* hostName, const char* servicePath
                   << "Sec-WebSocket-Version: 13\r\n\r\n";
     return requestStream.str();
 }
-
 #endif // #if __cplusplus >= 202002L && __has_include(<format>)
+
+void genRandMask(unsigned char (&mask)[4]) {
+    std::uint32_t randomValue = std::rand(); // Generate a random 32-bit number
+    std::memcpy(mask, &randomValue, 4);    
+}
+
 } // namespace dumbtrader::network::detail
 
 WebSocketSecureClient::WebSocketSecureClient() : socket_(), ssl_ctx_(nullptr), ssl_(nullptr) {
@@ -63,6 +68,9 @@ WebSocketSecureClient::WebSocketSecureClient() : socket_(), ssl_ctx_(nullptr), s
     // int use_prv = SSL_CTX_use_PrivateKey_file(ctx, "...s/private.key", SSL_FILETYPE_PEM);
     // if (!SSL_CTX_check_private_key(ctx)) { std::cerr << "Private key does not match public certificate\n"; }
     ssl_ = ::SSL_new(ssl_ctx_);
+
+    auto now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::srand(static_cast<unsigned int>(now));
 }
 
 void WebSocketSecureClient::connectService(const char *hostName, int port, const char* servicePath) {
@@ -91,44 +99,8 @@ void WebSocketSecureClient::connectService(const char *hostName, int port, const
 
     std::string request = detail::buildServiceRequestMsg(hostName, servicePath);
     ::SSL_write(ssl_, request.c_str(), request.size());
-}
 
-void WebSocketSecureClient::send(const std::string& message) {
-    std::vector<unsigned char> frame;
-    
-    // Create the WebSocket frame header
-    unsigned char byte1 = 0x81; // FIN + Text frame
-    frame.push_back(byte1);
-    
-    size_t payload_len = message.size();
-    
-    // Mask bit is 1 (client-to-server), and we handle small payloads (<126 bytes)
-    if (payload_len <= 125) {
-        frame.push_back(0x80 | payload_len); // 0x80 sets the mask bit
-    } else if (payload_len <= 65535) {
-        frame.push_back(0x80 | 126); // 126 means 2-byte payload length follows
-        frame.push_back((payload_len >> 8) & 0xFF); // Most significant byte
-        frame.push_back(payload_len & 0xFF);        // Least significant byte
-    } else {
-        // Handle larger payloads if needed
-        frame.push_back(0x80 | 127); // 127 means 8-byte payload length follows
-        for (int i = 7; i >= 0; --i) {
-            frame.push_back((payload_len >> (8 * i)) & 0xFF);
-        }
-    }
-    
-    // Generate a masking key (4 bytes)
-    unsigned char mask[4] = {0x12, 0x34, 0x56, 0x78}; // Example mask key (randomly generated in real scenarios)
-    frame.insert(frame.end(), std::begin(mask), std::end(mask));
-    
-    // Mask the payload data
-    for (size_t i = 0; i < payload_len; ++i) {
-        frame.push_back(message[i] ^ mask[i % 4]);
-    }
-
-    ::SSL_write(ssl_, frame.data(), frame.size());
-
-    // subscribe response
+    // subscribe response - TODO: verify sec-websocket-accept 
     char buffer[4096];
     int bytes = ::SSL_read(ssl_, buffer, sizeof(buffer) - 1);
     if (bytes > 0) {
@@ -137,49 +109,69 @@ void WebSocketSecureClient::send(const std::string& message) {
     } else {
         THROW_CERROR("SSL_read failed, errno: {} ({})");
     }
-
 }
 
-void WebSocketSecureClient::recv() {
-    unsigned char buffer[2];
-    
-    // Read the first 2 bytes of the WebSocket frame (fin, opcode, mask, payload length)
-    ::SSL_read(ssl_, buffer, 2);
-    
-    bool fin = (buffer[0] & 0x80) != 0;
-    unsigned char opcode = buffer[0] & 0x0F;
-    bool is_masked = (buffer[1] & 0x80) != 0;
-    size_t payload_len = buffer[1] & 0x7F;
-    
-    // Handle extended payload lengths (126 or 127)
-    if (payload_len == 126) {
-        unsigned char extended_payload[2];
-        ::SSL_read(ssl_, extended_payload, 2);
-        payload_len = (extended_payload[0] << 8) | extended_payload[1];
-    } else if (payload_len == 127) {
-        unsigned char extended_payload[8];
-        ::SSL_read(ssl_, extended_payload, 8);
-        // Handle 8-byte extended payload length
-        // For simplicity, we'll assume it's small and only use the lower 4 bytes
-        payload_len = (extended_payload[4] << 24) | (extended_payload[5] << 16) |
-                    (extended_payload[6] << 8) | extended_payload[7];
-    }
-    
-    // Read the payload data
-    std::vector<unsigned char> payload(payload_len);
-    ::SSL_read(ssl_, payload.data(), payload_len);
-
-    // Print the payload
-    if (opcode == 0x1) {
-        // Text frame
-        std::string message(payload.begin(), payload.end());
-        std::cout << "Received message: " << message << std::endl;
-    } else if (opcode == 0x2) {
-        // Binary frame
-        std::cout << "Received binary data" << std::endl;
+// client must mask all frames sent to the server.
+void WebSocketSecureClient::send(const std::string& message) {
+    std::vector<unsigned char> frame;
+    uint64_t payloadSize = message.size();
+    if (payloadSize < PAYLOAD_LEN_TWO_BYTES) {
+        frame.reserve(6 + payloadSize); // 2 + 4
+        frame.push_back(FIN_BIT | OP_TEXT_FRAME);
+        frame.push_back(MASK_BIT | payloadSize);
+    } else if (payloadSize <= 0xFFFF) {
+        frame.reserve(8 + payloadSize); // 2 + 2 + 4
+        frame.push_back(FIN_BIT | OP_TEXT_FRAME);
+        frame.push_back(MASK_BIT | PAYLOAD_LEN_TWO_BYTES);
+        frame.push_back((payloadSize >> 8) & 0xFF);
+        frame.push_back(payloadSize & 0xFF);
     } else {
-        std::cout << "Received unknown opcode: " << opcode << std::endl;
+        frame.reserve(14 + payloadSize); // 2 + 8 + 4
+        frame.push_back(FIN_BIT | OP_TEXT_FRAME);
+        frame.push_back(MASK_BIT | PAYLOAD_LEN_EIGHT_BYTES);
+        frame.resize(10); // 2 + 8
+        memcpy(frame.data() + 2, &payloadSize, sizeof(payloadSize));
     }
+    
+    unsigned char mask[4];
+    detail::genRandMask(mask);
+    frame.insert(frame.end(), std::begin(mask), std::end(mask));
+    for (size_t i = 0; i < payloadSize; ++i) {
+        frame.push_back(message[i] ^ mask[i % 4]);
+    }
+    ::SSL_write(ssl_, frame.data(), frame.size());
+}
+
+// server never mask frames sent to the client.
+unsigned char WebSocketSecureClient::recv(std::string& message) {
+    unsigned char twoBytes[2];
+    ::SSL_read(ssl_, twoBytes, 2);
+    bool isFin = (twoBytes[0] & FIN_BIT) != 0;
+    unsigned char op = twoBytes[0] & OP_BITS;
+    if (twoBytes[1] & MASK_BIT) {
+        throw std::runtime_error("server never mask frames sent to the client.");
+    }
+    uint64_t payloadSize = twoBytes[1] & PAYLOAD_LEN_BITS;
+    
+    if (payloadSize == PAYLOAD_LEN_TWO_BYTES) {
+        ::SSL_read(ssl_, twoBytes, 2);
+        payloadSize = (twoBytes[0] << 8) | twoBytes[1];
+    } else if (payloadSize == PAYLOAD_LEN_EIGHT_BYTES) {
+        unsigned char extendedPayloadSize[8];
+        ::SSL_read(ssl_, extendedPayloadSize, 8);
+        payloadSize = (static_cast<uint64_t>(extendedPayloadSize[0]) << 56) |
+                    (static_cast<uint64_t>(extendedPayloadSize[1]) << 48) |
+                    (static_cast<uint64_t>(extendedPayloadSize[2]) << 40) |
+                    (static_cast<uint64_t>(extendedPayloadSize[3]) << 32) |
+                    (static_cast<uint64_t>(extendedPayloadSize[4]) << 24) |
+                    (static_cast<uint64_t>(extendedPayloadSize[5]) << 16) |
+                    (static_cast<uint64_t>(extendedPayloadSize[6]) << 8)  |
+                    (static_cast<uint64_t>(extendedPayloadSize[7]));
+    }
+    size_t prevSize = message.size();
+    message.resize(prevSize + payloadSize);
+    ::SSL_read(ssl_, message.data() + prevSize, payloadSize);
+    return isFin ? op : recv(message);
 }
 
 void WebSocketSecureClient::close() {
