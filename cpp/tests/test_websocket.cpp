@@ -1,8 +1,4 @@
 #include "dumbtrader/network/websocket.h"
-// #include "dumbtrader/utils/error.h"
-
-#include <cstring>
-#include <iostream>
 
 using namespace dumbtrader::network;
 
@@ -13,8 +9,7 @@ constexpr const char SUBSCRIBE_MSG[] = R"({"op": "subscribe", "args": [{"channel
 
 int main() {
     WebSocketSecureClient client;
-    client.init(HOST_NAME, HOST_PORT);
-    client.connectService(SERVICE_PATH);
+    client.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     client.send(SUBSCRIBE_MSG);
     client.recv();
     client.recv();

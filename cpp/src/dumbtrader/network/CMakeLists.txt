@@ -6,3 +6,4 @@ add_library(network ${ORDER_BOOK_SOURCES})
 find_package(OpenSSL REQUIRED)
 
 target_include_directories(network PUBLIC ${PROJECT_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIR})
+target_link_libraries(network PUBLIC OpenSSL::SSL OpenSSL::Crypto)

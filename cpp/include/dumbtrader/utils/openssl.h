@@ -1,3 +1,6 @@
+#ifndef DUMBTRADER_UTILS_OPENSSL_H_
+#define DUMBTRADER_UTILS_OPENSSL_H_
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -27,4 +30,7 @@ inline OpenSSLException getException() {
     }
     return OpenSSLException("No OpenSSL error in the stack");
 }
-}
+
+} // namespace dumbtrader::utils::openssl
+
+#endif // #define DUMBTRADER_UTILS_OPENSSL_H_
