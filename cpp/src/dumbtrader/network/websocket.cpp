@@ -77,13 +77,11 @@ void WebSocketSecureClient::connectService(const char *hostName, int port, const
     int sockfd = socket_.get_fd();
     ::SSL_set_fd(ssl_, sockfd);
     ::SSL_set_connect_state(ssl_);
-
     for (;;) {
         int success = ::SSL_connect(ssl_);
         if(success == 1) {
             break;
         }
-
         unsigned long errorCode = ::SSL_get_error(ssl_, success);
         if (errorCode == SSL_ERROR_WANT_READ 
             || errorCode == SSL_ERROR_WANT_WRITE
@@ -95,11 +93,10 @@ void WebSocketSecureClient::connectService(const char *hostName, int port, const
             throw dumbtrader::utils::openssl::getException(errorCode);
         }
     }
-
     std::string request = detail::buildServiceRequestMsg(hostName, servicePath);
     ::SSL_write(ssl_, request.c_str(), request.size());
 
-    // subscribe response - TODO: verify sec-websocket-accept 
+    // ws established response - TODO: verify sec-websocket-accept 
     char buffer[4096];
     int bytes = ::SSL_read(ssl_, buffer, sizeof(buffer) - 1);
     if (bytes > 0) {
@@ -131,7 +128,6 @@ void WebSocketSecureClient::send(const std::string& message) {
         frame.resize(10); // 2 + 8
         memcpy(frame.data() + 2, &payloadSize, sizeof(payloadSize));
     }
-    
     unsigned char mask[4];
     detail::genRandMask(mask);
     frame.insert(frame.end(), std::begin(mask), std::end(mask));
@@ -154,7 +150,7 @@ unsigned char WebSocketSecureClient::recv(std::string& message) {
     
     if (payloadSize == PAYLOAD_LEN_TWO_BYTES) {
         ::SSL_read(ssl_, twoBytes, 2);
-        payloadSize = (twoBytes[0] << 8) | twoBytes[1];
+        payloadSize = (static_cast<uint64_t>(twoBytes[0]) << 8) | static_cast<uint64_t>(twoBytes[1]);
     } else if (payloadSize == PAYLOAD_LEN_EIGHT_BYTES) {
         unsigned char extendedPayloadSize[8];
         ::SSL_read(ssl_, extendedPayloadSize, 8);
@@ -169,7 +165,17 @@ unsigned char WebSocketSecureClient::recv(std::string& message) {
     }
     size_t prevSize = message.size();
     message.resize(prevSize + payloadSize);
-    ::SSL_read(ssl_, message.data() + prevSize, payloadSize);
+    int bytes_read = 0;
+    while (payloadSize > 0) {
+        bytes_read = ::SSL_read(ssl_, message.data() + prevSize, payloadSize);
+        if (bytes_read == 0) {
+            throw std::runtime_error("server closed.");
+        } else if (bytes_read < 0) {
+            THROW_CERROR("Socket SSL read error, errno: {} ({})");
+        }
+        payloadSize -= bytes_read;
+        prevSize += bytes_read;
+    }
     return isFin ? op : recv(message);
 }
 
