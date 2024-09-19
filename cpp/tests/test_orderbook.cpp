@@ -4,7 +4,8 @@
 #include <iostream>
 #include <sstream>
 
-// #include <sched.h>
+#include <sched.h>
+#include <pthread.h>
 
 using dumbtrader::orderbook::OrderBook;
 using dumbtrader::orderbook::OrderSide;
@@ -15,14 +16,27 @@ inline uint64_t rdtscp() {
     __asm__ __volatile__ ("rdtscp" : "=a"(lo), "=d"(hi) :: "%rcx");
     return ((uint64_t)hi << 32) | lo;
 }
+
+inline void set_affinity(int core_id) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(core_id, &cpuset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+}
 #else
 inline uint64_t rdtscp() {
     std::cout << "rdtscp not supported" << std::endl;
     return 0;
 }
+
+inline void set_affinity(int) {
+    std::cout << "rdtscp not supported" << std::endl;
+    return;
+}
 #endif
 
 int main() {
+    set_affinity(0);
     OrderBook book;
     
     std::string filename = "../book.txt";
