@@ -126,7 +126,7 @@ void WebSocketSecureClient::send(const std::string& message) {
         frame.push_back(FIN_BIT | OP_TEXT_FRAME);
         frame.push_back(MASK_BIT | PAYLOAD_LEN_EIGHT_BYTES);
         frame.resize(10); // 2 + 8
-        memcpy(frame.data() + 2, &payloadSize, sizeof(payloadSize));
+        std::memcpy(frame.data() + 2, &payloadSize, sizeof(payloadSize));
     }
     unsigned char mask[4];
     detail::genRandMask(mask);

@@ -5,7 +5,7 @@
 
 #include <string>
 
-#include <openssl/types.h>
+#include <openssl/ossl_typ.h>
 
 namespace dumbtrader::network {
 
