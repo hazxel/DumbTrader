@@ -27,7 +27,7 @@ constexpr const char* FMT_SOCKET_RECV_PEER_DISCONNECTED = "Failed to receive mes
 
 namespace detail {
 inline sockaddr_in constructSockAddrIn(const char* ip, int port) {
-    #if __cplusplus > 201703L
+    #if __cplusplus >= 202002L
         return sockaddr_in { // C++20 Designated Initializers
             .sin_family = AF_INET,
             .sin_port = htons(port),
