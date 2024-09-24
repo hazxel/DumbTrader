@@ -58,15 +58,11 @@ WebSocketSecureClient::WebSocketSecureClient() : socket_(), ssl_ctx_(nullptr), s
     if (ssl_ctx_ == nullptr) {
         throw dumbtrader::utils::openssl::getException();
     }
-    ::SSL_CTX_set_min_proto_version(ssl_ctx_, TLS1_3_VERSION);
     ::SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_DH_USE);
-    /* usually only server provide cert */
-    // SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT|SSL_VERIFY_CLIENT_ONCE, 0);
-    // SSL_CTX_load_verify_locations(ctx, CA_CERT_FILE, nullptr);
-    // int use_cert = SSL_CTX_use_certificate_file(ctx, ".../certificate.crt" , SSL_FILETYPE_PEM);
-    // int use_prv = SSL_CTX_use_PrivateKey_file(ctx, "...s/private.key", SSL_FILETYPE_PEM);
-    // if (!SSL_CTX_check_private_key(ctx)) { std::cerr << "Private key does not match public certificate\n"; }
     ssl_ = ::SSL_new(ssl_ctx_);
+    if (ssl_ == nullptr) {
+        throw dumbtrader::utils::openssl::getException();
+    }
 
     std::random_device rd;
     std::srand(rd());
