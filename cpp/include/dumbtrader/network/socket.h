@@ -4,6 +4,7 @@
 #include "dumbtrader/utils/error.h"
 
 #include <cstring>      // std::memset
+#include <utility>      // std:swap
 
 #include <arpa/inet.h>  // inet_addr (convert `char*` ip addr to `__uint32_t`)
 #include <fcntl.h>      // fnctl
@@ -43,6 +44,8 @@ inline sockaddr_in constructSockAddrIn(const char* ip, int port) {
     #endif
 }
 
+// socket default to block, this function set socket to non-block mode
+// for each operation, can pass temporary ctrl flags to control this
 inline void setFdNonblock(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if(flags == -1) {
@@ -77,7 +80,18 @@ public:
         if constexpr(M == Mode::NONBLOCK) {
             detail::setFdNonblock(sockfd_);
         }
-    } 
+    }
+
+    Socket(const Socket&) = delete;
+    Socket(Socket&& other) : sockfd_(other.sockfd_) { other.sockfd_ = -1; }
+    Socket& operator=(const Socket&) = delete;
+    Socket& operator=(Socket&& other) { 
+        if (sockfd_ != -1) {
+            ::close(sockfd_);
+            sockfd_ = -1;
+        }
+        std::swap(sockfd_, other.sockfd_);
+    }
 
     ~Socket() {
         if (sockfd_ != -1) {
@@ -85,7 +99,6 @@ public:
             sockfd_ = -1;
         }
     }
-
 
     /* server side only functions */
     template<bool EnableAddrReuse = true>
@@ -119,14 +132,10 @@ public:
     }
 
     // TODO: nonblock?
+    // not gurantee to read given length of data, may be less
     ssize_t recv(void* buffer, size_t length, int flags = 0) const {
         ssize_t bytesReceived = ::recv(sockfd_, buffer, length, flags);
         if (bytesReceived < 0) {
-            if constexpr (M == Mode::NONBLOCK) {
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    // 发送缓冲区已满，需要稍后重试
-                }
-            }
             THROW_CERROR(FMT_SOCKET_RECV_FAILED);
         } else if (bytesReceived == 0) {
             THROW_CERROR(FMT_SOCKET_RECV_PEER_DISCONNECTED);

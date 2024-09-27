@@ -1,7 +1,7 @@
 #include "dumbtrader/network/websocket.h"
 
 #include "dumbtrader/utils/error.h"
-#include "dumbtrader/utils/openssl.h"
+#include "dumbtrader/network/openssl.h"
 #include "dumbtrader/network/socket.h"
 
 #include <cstring>
@@ -56,12 +56,12 @@ WebSocketSecureClient::WebSocketSecureClient() : socket_(), ssl_ctx_(nullptr), s
 
     ssl_ctx_ = ::SSL_CTX_new(::TLS_client_method());
     if (ssl_ctx_ == nullptr) {
-        throw dumbtrader::utils::openssl::getException();
+        throw dumbtrader::network::openssl::getException();
     }
     ::SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_DH_USE);
     ssl_ = ::SSL_new(ssl_ctx_);
     if (ssl_ == nullptr) {
-        throw dumbtrader::utils::openssl::getException();
+        throw dumbtrader::network::openssl::getException();
     }
 
     std::random_device rd;
@@ -82,11 +82,11 @@ void WebSocketSecureClient::connectService(const char *hostName, int port, const
         if (errorCode == SSL_ERROR_WANT_READ 
             || errorCode == SSL_ERROR_WANT_WRITE
             || errorCode == SSL_ERROR_WANT_X509_LOOKUP) {
-            dumbtrader::utils::openssl::logNonFatalError(errorCode);
+            dumbtrader::network::openssl::logOpenSSLError(errorCode);
         // } else if (err == SSL_ERROR_ZERO_RETURN) {
         //     std::cerr << "SSL_connect: close notify received from peer" << std::endl;
         } else {
-            throw dumbtrader::utils::openssl::getException(errorCode);
+            throw dumbtrader::network::openssl::getException(errorCode);
         }
     }
     std::string request = detail::buildServiceRequestMsg(hostName, servicePath);
