@@ -31,9 +31,15 @@ constexpr unsigned char PAYLOAD_LEN_EIGHT_BYTES = 0x7F; // 127, means 8-byte pay
 
 class WebSocketSecureClient {
 public:
+    using BlockSockClient = Socket<Side::CLIENT, Mode::BLOCK>;
+
     WebSocketSecureClient();
 
     ~WebSocketSecureClient() { close(); }
+
+    inline BlockSockClient& borrowSocket() { return socket_; }
+
+    inline SSL* borrowSSL() { return ssl_; }
 
     void connectService(const char *hostName, int port, const char* servicePath);
 
@@ -43,6 +49,25 @@ public:
 
     void close();
 private: 
+    BlockSockClient socket_;
+    SSL_CTX* ssl_ctx_;
+    SSL* ssl_;
+};
+
+class WebSocketSecureMemoryClient {
+public:
+    WebSocketSecureMemoryClient();
+
+    ~WebSocketSecureMemoryClient() { close(); }
+
+    void connectService(const char *hostName, int port, const char* servicePath);
+
+    void send(const std::string& message);
+
+    unsigned char recv(std::string& message);
+
+    void close();
+public: 
     Socket<Side::CLIENT, Mode::BLOCK> socket_;
     SSL_CTX* ssl_ctx_;
     SSL* ssl_;

@@ -81,9 +81,8 @@ int main() {
 
     // int fd = client.socket_.get_fd();
     // use_liburing_helpers(fd);
-    SSL *ssl = client.ssl_;
 
-    dumbtrader::network::openssl::SSLConnSocket scs(client.socket_, ssl);
+    dumbtrader::network::openssl::SSLConnSocket scs(client.borrowSocket(), client.borrowSSL());
 
     char buf[BUFFER_SIZE];
     unsigned char twoBytes[2];
