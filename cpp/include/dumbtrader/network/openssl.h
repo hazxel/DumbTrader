@@ -49,7 +49,7 @@ private:
 class SSLMemoryBioClient : public SSLDirectSocketClient {
 public:
     static constexpr size_t BUF_SIZE = 4096;
-    SSLMemoryBioClient() : SSLDirectSocketClient(), buffer_(::malloc(BUF_SIZE)) {}
+    SSLMemoryBioClient() : SSLDirectSocketClient(), bio_(nullptr), buffer_(::malloc(BUF_SIZE)) {}
 
     ~SSLMemoryBioClient() {
         if (buffer_ != nullptr) {
@@ -66,9 +66,11 @@ private:
     void* buffer_;
 };
 
+#ifdef LIBURING_ENABLED
 class SSLIoUringClient {
 
 };
+#endif
 
 } // namespace dumbtrader::network
 
