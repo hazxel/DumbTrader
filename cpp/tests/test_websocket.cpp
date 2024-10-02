@@ -24,7 +24,7 @@ int64_t get_current_timestamp_ms() {
 }
 
 int main() {
-    WebSocketSecureClient client;
+    WebSocketClient<SSLSocketBioClient> client;
     client.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     client.send(SUBSCRIBE_MSG);
 

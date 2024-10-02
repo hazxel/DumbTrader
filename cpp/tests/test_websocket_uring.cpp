@@ -75,49 +75,22 @@ int main() {
     // std::memset(&p, 0, sizeof(p));
     // ::syscall(SYS_io_uring_setup, QUEUE_DEPTH, &p);
     
-    WebSocketSecureClient client;
+
+    // int fd = client.socket_.getFd();
+    // use_liburing_helpers(fd);
+
+    // WebSocketSecureMemoryClient client;
+    WebSocketClient<SSLMemoryBioClient> client;
+
     client.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     client.send(SUBSCRIBE_MSG);
 
-    // int fd = client.socket_.get_fd();
-    // use_liburing_helpers(fd);
-
-    dumbtrader::network::openssl::SSLConnSocket scs(client.borrowSocket(), client.borrowSSL());
-
-    char buf[BUFFER_SIZE];
-    unsigned char twoBytes[2];
-    std::memset(buf, 0, sizeof(buf));
-
-    ::sleep(1);
-    for (int i = 0; i < 50; ++i) {
-        scs.read(twoBytes, 2);
-        bool isFin = (twoBytes[0] & FIN_BIT) != 0;
-        unsigned char op = twoBytes[0] & OP_BITS;
-        if (twoBytes[1] & MASK_BIT) {
-            throw std::runtime_error("server never mask frames sent to the client.");
-        }
-        uint64_t payloadSize = twoBytes[1] & PAYLOAD_LEN_BITS;
-        
-        if (payloadSize == PAYLOAD_LEN_TWO_BYTES) {
-            scs.read(twoBytes, 2);
-            payloadSize = (static_cast<uint64_t>(twoBytes[0]) << 8) | static_cast<uint64_t>(twoBytes[1]);
-        } else if (payloadSize == PAYLOAD_LEN_EIGHT_BYTES) {
-            unsigned char extendedPayloadSize[8];
-            scs.read(extendedPayloadSize, 8);
-            payloadSize = (static_cast<uint64_t>(extendedPayloadSize[0]) << 56) |
-                        (static_cast<uint64_t>(extendedPayloadSize[1]) << 48) |
-                        (static_cast<uint64_t>(extendedPayloadSize[2]) << 40) |
-                        (static_cast<uint64_t>(extendedPayloadSize[3]) << 32) |
-                        (static_cast<uint64_t>(extendedPayloadSize[4]) << 24) |
-                        (static_cast<uint64_t>(extendedPayloadSize[5]) << 16) |
-                        (static_cast<uint64_t>(extendedPayloadSize[6]) << 8)  |
-                        (static_cast<uint64_t>(extendedPayloadSize[7]));
-        }
-        std::string message;
-        message.resize(payloadSize);
-        int bytes_read = 0;
-        scs.read(message.data(), payloadSize);
-        std::cout << i << "th ws msg >>>> " << message << std::endl;
+    std::string msg;
+    for (int i = 0; i < 5; ++i) {
+        client.recv(msg);
+        std::cout << " - msg No." << i << " : \n" << msg << "\n";
+        msg.clear();
+        std::cout << "ts: " << get_current_timestamp_ms() << "\n";
     }
     return 0;
 }

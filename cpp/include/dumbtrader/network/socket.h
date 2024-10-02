@@ -143,7 +143,7 @@ public:
         return bytesReceived;
     }
 
-    int get_fd() const { return sockfd_; }
+    int getFd() const { return sockfd_; }
 protected:
     int sockfd_;
 };
