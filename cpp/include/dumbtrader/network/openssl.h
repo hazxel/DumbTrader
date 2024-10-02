@@ -22,43 +22,46 @@ inline OpenSSLException getException(unsigned long errorCode);
 inline OpenSSLException getException();
 
 class SSLDirectSocketClient {
-
-};
-
-class SSLSocketBioClient {
 public:
     using BlockSocketClient = Socket<Side::CLIENT, Mode::BLOCK>;
 
-    SSLSocketBioClient();
-    ~SSLSocketBioClient();
+    SSLDirectSocketClient();
+    ~SSLDirectSocketClient();
 
     void connect(const char *hostName, int port);
     int read(void *dst, size_t len);
     void write(const void* data, int length);
 
-private:
+protected:
     BlockSocketClient socket_;
     SSL_CTX* ssl_ctx_;
     SSL* ssl_;
+};
+
+class SSLSocketBioClient : public SSLDirectSocketClient {
+public:
+    SSLSocketBioClient() : SSLDirectSocketClient(), bio_(nullptr) {}
+    void connect(const char *hostName, int port);
+private:
     BIO* bio_;
 };
 
-class SSLMemoryBioClient {
+class SSLMemoryBioClient : public SSLDirectSocketClient {
 public:
-    using BlockSocketClient = Socket<Side::CLIENT, Mode::BLOCK>;
     static constexpr size_t BUF_SIZE = 4096;
+    SSLMemoryBioClient() : SSLDirectSocketClient(), buffer_(::malloc(BUF_SIZE)) {}
 
-    SSLMemoryBioClient();
-    ~SSLMemoryBioClient();
+    ~SSLMemoryBioClient() {
+        if (buffer_ != nullptr) {
+            free(buffer_);
+        }
+    }
 
     void connect(const char *hostName, int port);
     int read(void *dst, size_t len);
     int write(const void *src, size_t len);
 
 private:
-    BlockSocketClient socket_;
-    SSL_CTX* ssl_ctx_;
-    SSL* ssl_;
     BIO* bio_;
     void* buffer_;
 };

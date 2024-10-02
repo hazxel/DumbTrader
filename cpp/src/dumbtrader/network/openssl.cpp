@@ -28,8 +28,9 @@ OpenSSLException getException() {
     return getException(ERR_get_error());
 }
 
-SSLSocketBioClient::SSLSocketBioClient()
-    : ssl_ctx_(nullptr), ssl_(nullptr), bio_(nullptr) {
+
+SSLDirectSocketClient::SSLDirectSocketClient()
+    : ssl_ctx_(nullptr), ssl_(nullptr){
     ::SSL_library_init();
     ::SSL_load_error_strings();
     ::ERR_load_crypto_strings();
@@ -47,7 +48,7 @@ SSLSocketBioClient::SSLSocketBioClient()
     }
 }
 
-SSLSocketBioClient::~SSLSocketBioClient() {
+SSLDirectSocketClient::~SSLDirectSocketClient() {
     if (ssl_ != nullptr) {
         ::SSL_free(ssl_);
         ssl_ = nullptr;
@@ -58,87 +59,7 @@ SSLSocketBioClient::~SSLSocketBioClient() {
     }
 }
 
-void SSLSocketBioClient::connect(const char *hostName, int port) {
-    socket_.connectByHostname(hostName, port);
-    bio_ = ::BIO_new(BIO_s_socket());
-    BIO_set_fd(bio_, socket_.getFd(), BIO_NOCLOSE);
-    ::SSL_set_bio(ssl_, bio_, bio_);
-    ::SSL_set_connect_state(ssl_);
-
-    for (;;) {
-        int success = ::SSL_connect(ssl_);
-        if (success == 1) {
-            break;
-        }
-        unsigned long errorCode = ::SSL_get_error(ssl_, success);
-        if (errorCode == SSL_ERROR_WANT_READ 
-            || errorCode == SSL_ERROR_WANT_WRITE
-            || errorCode == SSL_ERROR_WANT_X509_LOOKUP) {
-            logOpenSSLError(errorCode);
-        } else {
-            logOpenSSLError(errorCode);
-            throw getException(errorCode);
-        }
-    }
-}
-
-int SSLSocketBioClient::read(void *dst, size_t len) {
-    for (;;) {
-        int readBytes = ::SSL_read(ssl_, dst, len);
-        if (readBytes > 0) {
-            return readBytes;
-        }
-        int err = ::SSL_get_error(ssl_, readBytes);
-        if (err != SSL_ERROR_WANT_READ) {
-            logOpenSSLError(err);
-            throw getException(err);
-        }
-    }
-}
-
-void SSLSocketBioClient::write(const void* data, int length) {
-    int writeBytes = ::SSL_write(ssl_, data, length);
-    if (writeBytes <= 0) {
-        int err = ::SSL_get_error(ssl_, writeBytes);
-        logOpenSSLError(err);
-        throw getException(err);
-    }
-}
-
-SSLMemoryBioClient::SSLMemoryBioClient()
-    : ssl_ctx_(nullptr), ssl_(nullptr), bio_(nullptr), buffer_(::malloc(BUF_SIZE)) {
-    ::SSL_library_init();
-    ::SSL_load_error_strings();
-    ::ERR_load_crypto_strings();
-    ::OpenSSL_add_ssl_algorithms();
-
-    ssl_ctx_ = ::SSL_CTX_new(::TLS_client_method());
-    if (ssl_ctx_ == nullptr) {
-        throw getException();
-    }
-    ::SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_DH_USE);
-
-    ssl_ = ::SSL_new(ssl_ctx_);
-    if (ssl_ == nullptr) {
-        throw getException();
-    }
-}
-
-SSLMemoryBioClient::~SSLMemoryBioClient() {
-    if (ssl_ != nullptr) {
-        ::SSL_free(ssl_);
-        ssl_ = nullptr;
-    }
-    if (ssl_ctx_ != nullptr) {
-        ::SSL_CTX_free(ssl_ctx_);
-        ssl_ctx_ = nullptr;
-    }
-    if (buffer_ != nullptr) {
-        free(buffer_);
-    }
-}
-
-void SSLMemoryBioClient::connect(const char *hostName, int port) {
+void SSLDirectSocketClient::connect(const char *hostName, int port) {
     socket_.connectByHostname(hostName, port);
     ::SSL_set_fd(ssl_, socket_.getFd());
     ::SSL_set_connect_state(ssl_);
@@ -157,8 +78,57 @@ void SSLMemoryBioClient::connect(const char *hostName, int port) {
             throw getException(errorCode);
         }
     }
-    // membio take over after handshake
-    bio_ = ::BIO_new(BIO_s_mem());
+}
+
+int SSLDirectSocketClient::read(void *dst, size_t len) {
+    for (;;) {
+        int readBytes = ::SSL_read(ssl_, dst, len);
+        if (readBytes > 0) {
+            return readBytes;
+        }
+        int err = ::SSL_get_error(ssl_, readBytes);
+        if (err != SSL_ERROR_WANT_READ) {
+            logOpenSSLError(err);
+            throw getException(err);
+        }
+    }
+}
+
+void SSLDirectSocketClient::write(const void* data, int length) {
+    int writeBytes = ::SSL_write(ssl_, data, length);
+    if (writeBytes <= 0) {
+        int err = ::SSL_get_error(ssl_, writeBytes);
+        logOpenSSLError(err);
+        throw getException(err);
+    }
+}
+
+void SSLSocketBioClient::connect(const char *hostName, int port) {
+    socket_.connectByHostname(hostName, port);
+    bio_ = ::BIO_new(BIO_s_socket());
+    BIO_set_fd(bio_, socket_.getFd(), BIO_NOCLOSE);
+    ::SSL_set_bio(ssl_, bio_, bio_);
+    ::SSL_set_connect_state(ssl_);
+    for (;;) {
+        int success = ::SSL_connect(ssl_);
+        if (success == 1) {
+            break;
+        }
+        unsigned long errorCode = ::SSL_get_error(ssl_, success);
+        if (errorCode == SSL_ERROR_WANT_READ 
+            || errorCode == SSL_ERROR_WANT_WRITE
+            || errorCode == SSL_ERROR_WANT_X509_LOOKUP) {
+            logOpenSSLError(errorCode);
+        } else {
+            logOpenSSLError(errorCode);
+            throw getException(errorCode);
+        }
+    }
+}
+
+void SSLMemoryBioClient::connect(const char *hostName, int port) {
+    SSLDirectSocketClient::connect(hostName, port);
+    bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
     ::SSL_set_bio(ssl_, bio_, bio_);
 }
 
