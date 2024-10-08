@@ -34,10 +34,10 @@ inline void genRandMask(unsigned char (&mask)[4]) {
 }
 } // namespace dumbtrader::network::detail
 
-template <typename SSLClientType>
-class WebSocketClient {
+template <typename SSLClientType = SSLDirectSocketClient>
+class WebSocketSecureClient {
     public:
-    WebSocketClient() {
+    WebSocketSecureClient() {
         std::random_device rd;
         std::srand(rd());
     }

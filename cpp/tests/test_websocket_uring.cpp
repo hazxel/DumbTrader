@@ -80,7 +80,7 @@ int main() {
     // use_liburing_helpers(fd);
 
     // WebSocketSecureMemoryClient client;
-    WebSocketClient<SSLMemoryBioClient> client;
+    WebSocketSecureClient<SSLMemoryBioClient> client;
 
     client.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     client.send(SUBSCRIBE_MSG);
