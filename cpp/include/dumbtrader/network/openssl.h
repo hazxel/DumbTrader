@@ -36,6 +36,8 @@ public:
     int read(void *dst, size_t len);
     void write(const void* data, int length);
 
+    int getSocketFd() const { return socket_.getFd(); }
+
 protected:
     BlockSocketClient socket_;
     SSL_CTX* ssl_ctx_;

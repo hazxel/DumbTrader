@@ -111,6 +111,8 @@ class WebSocketSecureClient {
         message.resize(payloadSize);
         sslClient_.read(message.data(), payloadSize);
     }
+
+    int getSockFd() const { return sslClient_.getSocketFd(); }
 private: 
     SSLClientType sslClient_;
 };

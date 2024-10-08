@@ -5,7 +5,6 @@
 #include <cstring>
 #include <iostream>
 
-// #include <liburing.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -37,60 +36,68 @@ int64_t get_current_timestamp_ms() {
     return duration.count();
 }
 
-// void use_liburing_helpers(int fd) {
-//     io_uring ring;
-//     ::io_uring_queue_init(QUEUE_DEPTH, &ring, 0);
+#ifdef LIBURING_ENABLED
 
-//     // int fd = ::open("text.txt", O_RDONLY);
-//     // if (fd < 0) {
-//     //     std::cerr << "Failed to open file" << std::endl;
-//     //     return;
-//     // }
+#include <liburing.h>
 
-//     char buffer[BUFFER_SIZE];
-//     io_uring_sqe* sqe = ::io_uring_get_sqe(&ring);
-//     ::io_uring_prep_read(sqe, fd, buffer, sizeof(buffer), 0);
+void use_liburing_helpers(int fd) {
+    io_uring ring;
+    ::io_uring_queue_init(QUEUE_DEPTH, &ring, 0);
 
-//     ::io_uring_submit(&ring);
+    // fd = ::open("text.txt", O_RDONLY);
+    // if (fd < 0) {
+    //     std::cerr << "Failed to open file" << std::endl;
+    //     return;
+    // }
 
-//     io_uring_cqe* cqe;
-//     for (int i = 0; i < 3; ++i) {
-//         std::cout << "Before wait." << std::endl;
-//         ::io_uring_wait_cqe(&ring, &cqe);
-//         if (cqe->res < 0) {
-//             std::cerr << "Read failed" << std::endl;
-//         } else {
-//             std::cout << "Read " << cqe->res << " bytes" << std::endl;
-//             std::cout << "Buffer: " << buffer << std::endl;
-//         }   
-//         ::io_uring_cqe_seen(&ring, cqe);
-//         std::cout << "Seen sent." << std::endl;
-//     }
-//     ::io_uring_queue_exit(&ring);
-//     ::close(fd);
-// }
+    char buffer[BUFFER_SIZE];
+    io_uring_sqe* sqe = ::io_uring_get_sqe(&ring);
+    ::io_uring_prep_read(sqe, fd, buffer, sizeof(buffer), 0);
+
+    ::io_uring_submit(&ring);
+
+    io_uring_cqe* cqe;
+    for (int i = 0; i < 3; ++i) {
+        std::cout << "Before wait." << std::endl;
+        ::io_uring_wait_cqe(&ring, &cqe);
+        if (cqe->res < 0) {
+            std::cerr << "Read failed" << std::endl;
+        } else {
+            std::cout << "Read " << cqe->res << " bytes" << std::endl;
+            std::cout << "Buffer: " << buffer << std::endl;
+        }   
+        ::io_uring_cqe_seen(&ring, cqe);
+        std::cout << "Seen sent." << std::endl;
+    }
+    ::io_uring_queue_exit(&ring);
+    ::close(fd);
+}
+#else
+
+void use_liburing_helpers(int fd) {}
+
+#endif
 
 int main() {
-    // struct io_uring_params p;
+    //// raw sys call?
+    // struct io_uring_params p; ？？？ syntax？
     // std::memset(&p, 0, sizeof(p));
     // ::syscall(SYS_io_uring_setup, QUEUE_DEPTH, &p);
     
+    WebSocketSecureClient<SSLMemoryBioClient> wsc;
 
-    // int fd = client.socket_.getFd();
-    // use_liburing_helpers(fd);
+    wsc.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
+    wsc.send(SUBSCRIBE_MSG);
 
-    // WebSocketSecureMemoryClient client;
-    WebSocketSecureClient<SSLMemoryBioClient> client;
+    int fd = wsc.getSockFd();
+    use_liburing_helpers(fd);
 
-    client.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
-    client.send(SUBSCRIBE_MSG);
-
-    std::string msg;
-    for (int i = 0; i < 5; ++i) {
-        client.recv(msg);
-        std::cout << " - msg No." << i << " : \n" << msg << "\n";
-        msg.clear();
-        std::cout << "ts: " << get_current_timestamp_ms() << "\n";
-    }
+    // std::string msg;
+    // for (int i = 0; i < 5; ++i) {
+    //     wsc.recv(msg);
+    //     std::cout << " - msg No." << i << " : \n" << msg << "\n";
+    //     msg.clear();
+    //     std::cout << "ts: " << get_current_timestamp_ms() << "\n";
+    // }
     return 0;
 }
