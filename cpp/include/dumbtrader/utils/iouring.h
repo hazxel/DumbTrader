@@ -9,7 +9,7 @@ namespace dumbtrader::utils::iouring {
 
 class IoUring {
 
-}
+};
 
 } // namespace dumbtrader::utils::iouring
 

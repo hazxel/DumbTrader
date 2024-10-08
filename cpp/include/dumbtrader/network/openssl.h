@@ -5,6 +5,10 @@
 
 #include <openssl/ossl_typ.h>
 
+#ifdef LIBURING_ENABLED
+#include "dumbtrader/utils/iouring.h"
+#endif
+
 #include <stdexcept>
 
 namespace dumbtrader::network {
@@ -68,12 +72,10 @@ private:
 
 #ifdef LIBURING_ENABLED
 
-#include "dumbtrader/utils/iouring.h"
-
 class SSLIoUringClient {
 public:
     static constexpr size_t BUF_SIZE = 4096;
-    SSLIoUringClient() : SSLDirectSocketClient(), bio_(nullptr), buffer_(::malloc(BUF_SIZE)) {}
+    SSLIoUringClient() : bio_(nullptr), buffer_(::malloc(BUF_SIZE)) {}
 
     ~SSLIoUringClient() {
         if (buffer_ != nullptr) {
