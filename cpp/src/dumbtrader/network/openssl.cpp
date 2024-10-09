@@ -94,8 +94,8 @@ int SSLDirectSocketClient::read(void *dst, size_t len) {
     }
 }
 
-int SSLDirectSocketClient::write(const void* dst, int len) {
-    int writeBytes = ::SSL_write(ssl_, dst, len);
+int SSLDirectSocketClient::write(const void* src, int len) {
+    int writeBytes = ::SSL_write(ssl_, src, len);
     if (writeBytes <= 0) {
         int err = ::SSL_get_error(ssl_, writeBytes);
         logOpenSSLError(err);
@@ -184,8 +184,8 @@ int SSLMemoryBioClient::write(const void *src, size_t len) {
 #ifdef LIBURING_ENABLED
 void SSLIoUringClient::connect(const char *hostName, int port) {
     SSLDirectSocketClient::connect(hostName, port);
-    // bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
-    // ::SSL_set_bio(ssl_, bio_, bio_);
+    bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
+    ::SSL_set_bio(ssl_, bio_, bio_);
 }
 
 int SSLIoUringClient::read(void *dst, size_t len) {
@@ -205,10 +205,36 @@ int SSLIoUringClient::read(void *dst, size_t len) {
 }
 
 int SSLIoUringClient::write(const void *src, size_t len) {
-    int writeBytes = SSLDirectSocketClient::write(src, len);
-    bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
-    ::SSL_set_bio(ssl_, bio_, bio_);
-    return writeBytes;
+    size_t totalWritten = 0;
+    while (totalWritten < len) {
+        int writtenSSLBytes = ::SSL_write(ssl_, static_cast<const char*>(src) + totalWritten, len - totalWritten);
+        if (writtenSSLBytes > 0) {
+            totalWritten += writtenSSLBytes;
+            continue;
+        }
+        int err = ::SSL_get_error(ssl_, writtenSSLBytes);
+        logOpenSSLError(err);
+        throw getException(err);
+    }
+    for (;;) {
+        int readBioBytes = ::BIO_read(bio_, buffer_, BUF_SIZE);
+        if (readBioBytes == 0) {
+            break; // no data
+        } else if (readBioBytes < 0) {
+            int err = ::SSL_get_error(ssl_, readBioBytes);
+            if (err == SSL_ERROR_NONE) { 
+                break; // no data
+            } else if (err == SSL_ERROR_SYSCALL) {
+                LOG_CERROR("Failed to read from ssl memory bio, maybe no data. errno: {} ({})");
+                break; // maybe also no data
+            }
+            logOpenSSLError(err);
+            throw getException(err);
+        }
+        // uring_.write(socket_.getFd(), buffer_, readBioBytes);
+        socket_.send(buffer_, readBioBytes);
+    }
+    return totalWritten;
 }
 
 #endif // #ifdef LIBURING_ENABLED

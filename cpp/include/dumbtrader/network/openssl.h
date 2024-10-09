@@ -34,7 +34,7 @@ public:
 
     void connect(const char *hostName, int port);
     int read(void *dst, size_t len);
-    int write(const void* dst, int len);
+    int write(const void* src, int len);
 
     int getSocketFd() const { return socket_.getFd(); }
 
