@@ -202,6 +202,11 @@ int SSLIoUringClient::read(void *dst, size_t len) {
         ::BIO_write(bio_, buffer_, readUringBytes);
     }
 }
+
+int SSLIoUringClient::write(const void *src, size_t len) {
+    throw std::logic_error("SSLIoUringClient::write not implemented.");
+}
+
 #endif // #ifdef LIBURING_ENABLED
 
 } // namespace dumbtrader::network
