@@ -48,7 +48,7 @@ public:
     inline int write(int fd, const void* src, int len) {
         io_uring_sqe *sqe = ::io_uring_get_sqe(&ring_);  // 从提交队列中获取一个条目
         io_uring_prep_send(sqe, fd, src, len, 0);    // 准备发送请求
-        io_uring_submit(&ring);  // 提交
+        io_uring_submit(&ring_);  // 提交
 
         // 等待发送完成
         struct io_uring_cqe *cqe;
