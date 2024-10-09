@@ -64,6 +64,7 @@ void liburing_read_ws(int fd) {
         ::io_uring_wait_cqe(&ring, &cqe);
         if (cqe->res < 0) {
             std::cerr << "Read failed" << std::endl;
+            break;
         } else if (cqe->res == 0) {
             std::cout << "End of file reached." << std::endl;
             break;
@@ -85,19 +86,18 @@ void liburing_read_ws(int fd) { std::cout << "I/O Uring not supported on this pl
 
 int main() {
     WebSocketSecureClient<SSLMemoryBioClient> wsc;
-
     wsc.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     wsc.send(SUBSCRIBE_MSG);
 
     int fd = wsc.getSockFd();
-    // liburing_read_ws(fd);
+    liburing_read_ws(fd);
 
-    std::string msg;
-    for (int i = 0; i < 5; ++i) {
-        wsc.recv(msg);
-        std::cout << " - msg No." << i << " : \n" << msg << "\n";
-        msg.clear();
-        std::cout << "ts: " << get_current_timestamp_ms() << "\n";
-    }
+    // std::string msg;
+    // for (int i = 0; i < 5; ++i) {
+    //     wsc.recv(msg);
+    //     std::cout << " - msg No." << i << " : \n" << msg << "\n";
+    //     msg.clear();
+    //     std::cout << "ts: " << get_current_timestamp_ms() << "\n";
+    // }
     return 0;
 }
