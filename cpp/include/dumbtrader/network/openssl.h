@@ -73,7 +73,7 @@ private:
 };
 
 #ifdef LIBURING_ENABLED
-class SSLIoUringClient {
+class SSLIoUringClient : public SSLDirectSocketClient {
 public:
     static constexpr size_t BUF_SIZE = 4096;
     SSLIoUringClient() : bio_(nullptr), buffer_(::malloc(BUF_SIZE)), uring_() {}
