@@ -26,7 +26,7 @@ void liburing_read_file() {
     io_uring ring;
     ::io_uring_queue_init(QUEUE_DEPTH, &ring, 0);
 
-    fd = ::open("../book.txt", O_RDONLY);
+    int fd = ::open("../book.txt", O_RDONLY);
     if (fd < 0) {
         std::cerr << "Failed to open file" << std::endl;
         return;
