@@ -180,4 +180,28 @@ int SSLMemoryBioClient::write(const void *src, size_t len) {
     return totalWritten;
 }
 
+#ifdef LIBURING_ENABLED
+void SSLIoUringClient::connect(const char *hostName, int port) {
+    SSLDirectSocketClient::connect(hostName, port);
+    bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
+    ::SSL_set_bio(ssl_, bio_, bio_);
 }
+
+int SSLIoUringClient::read(void *dst, size_t len) {
+    for (;;) {
+        int readSSLBytes = ::SSL_read(ssl_, dst, len);
+        if (readSSLBytes > 0) {
+            return readSSLBytes;
+        }
+        int err = ::SSL_get_error(ssl_, readSSLBytes);
+        if (err != SSL_ERROR_WANT_READ) {
+            logOpenSSLError(err);
+            throw getException(err);
+        }
+        ssize_t readUringBytes = uring_.read(socket_.getFd(), buffer_, BUF_SIZE);
+        ::BIO_write(bio_, buffer_, readUringBytes);
+    }
+}
+#endif // #ifdef LIBURING_ENABLED
+
+} // namespace dumbtrader::network

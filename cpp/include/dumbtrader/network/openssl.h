@@ -73,11 +73,10 @@ private:
 };
 
 #ifdef LIBURING_ENABLED
-
 class SSLIoUringClient {
 public:
     static constexpr size_t BUF_SIZE = 4096;
-    SSLIoUringClient() : bio_(nullptr), buffer_(::malloc(BUF_SIZE)) {}
+    SSLIoUringClient() : bio_(nullptr), buffer_(::malloc(BUF_SIZE)), uring_() {}
 
     ~SSLIoUringClient() {
         if (buffer_ != nullptr) {
@@ -93,6 +92,13 @@ private:
     BIO* bio_;
     void* buffer_;
     dumbtrader::utils::iouring::IoUring uring_;
+};
+#else // #ifdef LIBURING_ENABLED
+class SSLIoUringClient {
+public:
+    void connect(const char *hostName, int port) {}
+    int read(void *dst, size_t len) { throw std::logic_error("iouring not supported on current platform."); }
+    int write(const void *src, size_t len) { throw std::logic_error("iouring not supported on current platform."); }
 };
 #endif // #ifdef LIBURING_ENABLED
 
