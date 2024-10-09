@@ -23,7 +23,7 @@ public:
         io_uring_sqe* sqe = ::io_uring_get_sqe(&ring_);
         if (!sqe) {
             std::cerr << "Failed to get sqe" << std::endl;
-            break;
+            return -1;
         }
 
         // no need to calculate offset when reading socket

@@ -91,7 +91,7 @@ public:
 private:
     BIO* bio_;
     void* buffer_;
-    dumbtrader::utils::iouring::IoUring uring_;
+    dumbtrader::utils::iouring::IoUring<> uring_;
 };
 #else // #ifdef LIBURING_ENABLED
 class SSLIoUringClient {
