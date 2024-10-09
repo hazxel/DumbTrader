@@ -94,13 +94,14 @@ int SSLDirectSocketClient::read(void *dst, size_t len) {
     }
 }
 
-void SSLDirectSocketClient::write(const void* data, int length) {
-    int writeBytes = ::SSL_write(ssl_, data, length);
+int SSLDirectSocketClient::write(const void* dst, int len) {
+    int writeBytes = ::SSL_write(ssl_, dst, len);
     if (writeBytes <= 0) {
         int err = ::SSL_get_error(ssl_, writeBytes);
         logOpenSSLError(err);
         throw getException(err);
     }
+    return writeBytes;
 }
 
 void SSLSocketBioClient::connect(const char *hostName, int port) {
@@ -204,9 +205,10 @@ int SSLIoUringClient::read(void *dst, size_t len) {
 }
 
 int SSLIoUringClient::write(const void *src, size_t len) {
-    SSLDirectSocketClient::write(src, len);
+    int writeBytes = SSLDirectSocketClient::write(src, len);
     bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
     ::SSL_set_bio(ssl_, bio_, bio_);
+    return writeBytes;
 }
 
 #endif // #ifdef LIBURING_ENABLED
