@@ -219,8 +219,8 @@ int SSLIoUringClient::write(const void *src, size_t len) {
             logOpenSSLError(err);
             throw getException(err);
         }
-        // uring_.write(socket_.getFd(), buffer_, readBioBytes);
-        socket_.send(buffer_, readBioBytes);
+        uring_.write(socket_.getFd(), buffer_, readBioBytes);
+        // socket_.send(buffer_, readBioBytes);
     }
     return totalWritten;
 }
