@@ -15,6 +15,9 @@
 #define THROW_CERROR(fmt, ...) \
     throw std::runtime_error(std::format(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
 
+#define THROW_CERROR_WITH_ERRNO(fmt, err, ...) \
+    throw std::runtime_error(std::format(fmt, ##__VA_ARGS__, err, std::strerror(err)))
+
 #define LOG_CERROR(fmt, ...) \
     std::cerr << std::format(fmt, ##__VA_ARGS__, errno, std::strerror(errno)) << std::endl
 
@@ -46,6 +49,9 @@ inline std::string genErrorString(const std::string &fmt, Args... args) {
 
 #define THROW_CERROR(fmt, ...) \
     throw std::runtime_error(dumbtrader::utils::error::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)))
+
+#define THROW_CERROR_WITH_ERRNO(fmt, err, ...) \
+    throw std::runtime_error(dumbtrader::utils::error::genErrorString(fmt, ##__VA_ARGS__, err, std::strerror(err)))
 
 #define LOG_CERROR(fmt, ...) \
     std::cerr << dumbtrader::utils::error::genErrorString(fmt, ##__VA_ARGS__, errno, std::strerror(errno)) << std::endl

@@ -25,6 +25,8 @@ constexpr const char* FMT_SOCKET_ACCEPT_FAILED = "Failed to accept socket connec
 constexpr const char* FMT_SOCKET_SEND_FAILED = "Failed to send message to socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_RECV_FAILED = "Failed to receive message from socket, errno: {} ({})";
 constexpr const char* FMT_SOCKET_RECV_PEER_DISCONNECTED = "Failed to receive message from socket, peer disconnected, errno: {} ({})";
+constexpr const char* FMT_FCNTL_GET_FLAGS_FAILED = "Failed to get fcntl flags, errno: {} ({})";
+constexpr const char* FMT_FCNTL_SET_FLAGS_FAILED = "Failed to set fcntl flags, errno: {} ({})";
 
 namespace detail {
 inline sockaddr_in constructSockAddrIn(const char* ip, int port) {
@@ -49,11 +51,11 @@ inline sockaddr_in constructSockAddrIn(const char* ip, int port) {
 inline void setFdNonblock(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if(flags == -1) {
-        THROW_CERROR("Failed to get fcntl flags");
+        THROW_CERROR(FMT_FCNTL_GET_FLAGS_FAILED);
     }
     flags |= O_NONBLOCK;
     if(fcntl(fd, F_SETFL, flags) == -1) {
-        THROW_CERROR("Failed to set fcntl flags");
+        THROW_CERROR(FMT_FCNTL_SET_FLAGS_FAILED);
     }
 }
 } // namespace detail
@@ -103,19 +105,14 @@ public:
     /* server side only functions */
     template<bool EnableAddrReuse = true>
     void bind(const char* ip, int port);
-
     void listen(int backlog);
-
     int accept();
     /* end of server side only functions */
 
-
     /* client side only functions */
     void connectByIp(const char* ip, int port);
-    
     void connectByHostname(const char* host, int port);
     /* end of client side only functions */
-
 
     // TODO: nonblock?
     ssize_t send(const void* buffer, size_t length, int flags = 0) const {
