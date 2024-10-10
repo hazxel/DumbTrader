@@ -182,12 +182,6 @@ int SSLMemoryBioClient::write(const void *src, size_t len) {
 }
 
 #ifdef LIBURING_ENABLED
-void SSLIoUringClient::connect(const char *hostName, int port) {
-    SSLDirectSocketClient::connect(hostName, port);
-    bio_ = ::BIO_new(BIO_s_mem()); // membio only take over after handshake
-    ::SSL_set_bio(ssl_, bio_, bio_);
-}
-
 int SSLIoUringClient::read(void *dst, size_t len) {
     for (;;) {
         int readSSLBytes = ::SSL_read(ssl_, dst, len);

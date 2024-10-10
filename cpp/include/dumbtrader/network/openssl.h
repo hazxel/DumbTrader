@@ -73,24 +73,15 @@ private:
 };
 
 #ifdef LIBURING_ENABLED
-class SSLIoUringClient : public SSLDirectSocketClient {
+class SSLIoUringClient : public SSLMemoryBioClient {
 public:
     static constexpr size_t BUF_SIZE = 4096;
-    SSLIoUringClient() : bio_(nullptr), buffer_(::malloc(BUF_SIZE)), uring_() {}
+    SSLIoUringClient() : SSLMemoryBioClient(), uring_() {}
 
-    ~SSLIoUringClient() {
-        if (buffer_ != nullptr) {
-            free(buffer_);
-        }
-    }
-
-    void connect(const char *hostName, int port);
     int read(void *dst, size_t len);
     int write(const void *src, size_t len);
 
 private:
-    BIO* bio_;
-    void* buffer_;
     dumbtrader::utils::iouring::IoUring<> uring_;
 };
 #else // #ifdef LIBURING_ENABLED
