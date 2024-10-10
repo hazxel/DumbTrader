@@ -35,14 +35,12 @@ public:
         if (cqe->res < 0) {
             std::cerr << "Read failed" << std::endl;
             return -1;
-        } else {
-            std::cout << "Read " << cqe->res << " bytes" << std::endl;
-            // std::cout.write(dst, cqe->res);
-            return cqe->res;
-        }   
-
+        }
+        
+        int read = cqe->res;
         ::io_uring_cqe_seen(&ring_, cqe);
         std::cout << "Seen sent." << std::endl;
+        return read;
     }
 
     inline int write(int fd, const void* src, int len) {

@@ -167,11 +167,8 @@ int SSLMemoryBioClient::write(const void *src, size_t len) {
             break; // no data
         } else if (readBioBytes < 0) {
             int err = ::SSL_get_error(ssl_, readBioBytes);
-            if (err == SSL_ERROR_NONE) { 
-                break; // no data
-            } else if (err == SSL_ERROR_SYSCALL) {
-                LOG_CERROR("Failed to read from ssl memory bio, maybe no data. errno: {} ({})");
-                break; // maybe also no data
+            if (err == SSL_ERROR_NONE || err == SSL_ERROR_SYSCALL) { 
+                break; // no more data
             }
             logOpenSSLError(err);
             throw getException(err);
@@ -216,11 +213,8 @@ int SSLIoUringClient::write(const void *src, size_t len) {
             break; // no data
         } else if (readBioBytes < 0) {
             int err = ::SSL_get_error(ssl_, readBioBytes);
-            if (err == SSL_ERROR_NONE) { 
-                break; // no data
-            } else if (err == SSL_ERROR_SYSCALL) {
-                LOG_CERROR("Failed to read from ssl memory bio, maybe no data. errno: {} ({})");
-                break; // maybe also no data
+            if (err == SSL_ERROR_NONE || err == SSL_ERROR_SYSCALL) { 
+                break; // no more data
             }
             logOpenSSLError(err);
             throw getException(err);

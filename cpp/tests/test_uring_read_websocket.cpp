@@ -36,60 +36,10 @@ int64_t get_current_timestamp_ms() {
     return duration.count();
 }
 
-#ifdef LIBURING_ENABLED
-
-#include <liburing.h>
-
-void liburing_read_ws(int fd) {
-    io_uring ring;
-    ::io_uring_queue_init(QUEUE_DEPTH, &ring, 0);
-    char buffer[BUFFER_SIZE];
-    io_uring_sqe* sqe;
-    io_uring_cqe* cqe;
-
-    for (;;) {
-        std::cout << "Preparing read." << std::endl;
-        sqe = ::io_uring_get_sqe(&ring);
-        if (!sqe) {
-            std::cerr << "Failed to get sqe" << std::endl;
-            break;
-        }
-
-        // no need to calculate offset when reading socket
-        ::io_uring_prep_read(sqe, fd, buffer, sizeof(buffer), 0);
-        ::io_uring_submit(&ring);
-
-        std::cout << "Before wait." << std::endl;
-        ::io_uring_wait_cqe(&ring, &cqe);
-        if (cqe->res < 0) {
-            std::cerr << "Read failed" << std::endl;
-            break;
-        } else if (cqe->res == 0) {
-            std::cout << "End of file reached." << std::endl;
-            break;
-        } else {
-            std::cout << "Read " << cqe->res << " bytes" << std::endl;
-            std::cout.write(buffer, cqe->res);
-        }   
-
-        ::io_uring_cqe_seen(&ring, cqe);
-        std::cout << "Seen sent." << std::endl;
-    }
-    ::io_uring_queue_exit(&ring);
-}
-
-#else
-void liburing_read_ws(int fd) { std::cout << "I/O Uring not supported on this platform." << std::endl; }
-#endif
-
 int main() {
-    // WebSocketSecureClient<SSLMemoryBioClient> wsc;
     WebSocketSecureClient<SSLIoUringClient> wsc;
     wsc.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     wsc.send(SUBSCRIBE_MSG);
-
-    // int fd = wsc.getSockFd();
-    // liburing_read_ws(fd);
     
     std::string msg;
     for (int i = 0; i < 5; ++i) {
