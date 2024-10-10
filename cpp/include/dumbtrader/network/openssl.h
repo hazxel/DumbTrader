@@ -67,7 +67,7 @@ public:
     int read(void *dst, size_t len);
     int write(const void *src, size_t len);
 
-private:
+protected:
     BIO* bio_;
     void* buffer_;
 };
