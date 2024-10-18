@@ -1,7 +1,8 @@
-#ifdef LIBURING_ENABLED
-
 #ifndef DUMBTRADER_UTILS_IOURING_H_
 #define DUMBTRADER_UTILS_IOURING_H_
+
+#ifdef LIBURING_ENABLED
+
 
 #include <liburing.h>
 
@@ -74,7 +75,6 @@ private:
 
 } // namespace dumbtrader::utils::iouring
 
-#endif // #define DUMBTRADER_UTILS_IOURING_H_
-
 #endif // #ifdef LIBURING_ENABLED
 
+#endif // #define DUMBTRADER_UTILS_IOURING_H_

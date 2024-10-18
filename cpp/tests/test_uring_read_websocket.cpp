@@ -41,6 +41,9 @@ int main() {
     wsc.connectService(HOST_NAME, HOST_PORT, SERVICE_PATH);
     wsc.send(SUBSCRIBE_MSG);
     
+    //// Biance push data:
+    // The transaction time T records the time that the data (e.g. account, order related) got updated.
+    // The event time E represents the time a certain data was pushed out from the server, which is the “message output time” mentioned in your post.
     std::string msg;
     for (int i = 0; i < 5; ++i) {
         wsc.recv(msg);
